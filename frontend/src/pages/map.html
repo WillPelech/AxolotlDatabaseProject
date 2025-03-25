@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Map - Belli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen">
+        <!-- Map Section -->
+        <div class="flex-1">
+            <div id="map" class="w-full h-full"></div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="w-96 bg-white shadow-lg overflow-y-auto">
+            <div class="p-6">
+                <h2 class="text-2xl font-bold mb-4">Recommended Restaurants</h2>
+                
+                <!-- Search Bar -->
+                <div class="mb-6">
+                    <input type="text" placeholder="Search restaurants..." 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+
+                <!-- Restaurant List -->
+                <div class="space-y-4">
+                    <!-- Restaurant Item 1 -->
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-start">
+                            <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4" alt="Restaurant" 
+                                class="w-20 h-20 object-cover rounded-md">
+                            <div class="ml-4">
+                                <h3 class="font-semibold">Restaurant Name 1</h3>
+                                <p class="text-gray-600 text-sm">Italian • $$$ • 4.5 ★</p>
+                                <p class="text-gray-600 text-sm mt-1">123 Main St, City, State</p>
+                                <button class="mt-2 text-orange-600 hover:text-orange-700 text-sm">
+                                    View on Map →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Restaurant Item 2 -->
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-start">
+                            <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4" alt="Restaurant" 
+                                class="w-20 h-20 object-cover rounded-md">
+                            <div class="ml-4">
+                                <h3 class="font-semibold">Restaurant Name 2</h3>
+                                <p class="text-gray-600 text-sm">Japanese • $$ • 4.2 ★</p>
+                                <p class="text-gray-600 text-sm mt-1">456 Oak Ave, City, State</p>
+                                <button class="mt-2 text-orange-600 hover:text-orange-700 text-sm">
+                                    View on Map →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Restaurant Item 3 -->
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-start">
+                            <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4" alt="Restaurant" 
+                                class="w-20 h-20 object-cover rounded-md">
+                            <div class="ml-4">
+                                <h3 class="font-semibold">Restaurant Name 3</h3>
+                                <p class="text-gray-600 text-sm">Mexican • $ • 4.8 ★</p>
+                                <p class="text-gray-600 text-sm mt-1">789 Pine Rd, City, State</p>
+                                <button class="mt-2 text-orange-600 hover:text-orange-700 text-sm">
+                                    View on Map →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Google Maps
+        function initMap() {
+            const map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 37.7749, lng: -122.4194 }, // San Francisco coordinates
+                zoom: 13
+            });
+
+            // Add markers for restaurants
+            const restaurants = [
+                { lat: 37.7749, lng: -122.4194, title: 'Restaurant Name 1' },
+                { lat: 37.7833, lng: -122.4167, title: 'Restaurant Name 2' },
+                { lat: 37.7917, lng: -122.4083, title: 'Restaurant Name 3' }
+            ];
+
+            restaurants.forEach(restaurant => {
+                new google.maps.Marker({
+                    position: { lat: restaurant.lat, lng: restaurant.lng },
+                    map: map,
+                    title: restaurant.title
+                });
+            });
+        }
+    </script>
+    <script src="../app.js"></script>
+</body>
+</html> 

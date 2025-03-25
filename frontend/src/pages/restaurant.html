@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant View - Belli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Restaurant Header -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="relative h-64">
+                <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4" alt="Restaurant" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-black bg-opacity-40"></div>
+                <div class="absolute bottom-0 left-0 right-0 p-6 text-white">
+                    <h1 class="text-3xl font-bold">Restaurant Name</h1>
+                    <p class="text-lg">Cuisine Type • $$$ • 4.5 ★</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Restaurant Details -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Main Content -->
+            <div class="md:col-span-2">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-bold mb-4">About</h2>
+                    <p class="text-gray-600 mb-6">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                    
+                    <h2 class="text-2xl font-bold mb-4">Menu</h2>
+                    <div class="space-y-4">
+                        <div class="border-b pb-4">
+                            <h3 class="text-xl font-semibold">Starters</h3>
+                            <div class="mt-2 space-y-2">
+                                <div class="flex justify-between">
+                                    <span>Bruschetta</span>
+                                    <span>$8.99</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Calamari</span>
+                                    <span>$12.99</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border-b pb-4">
+                            <h3 class="text-xl font-semibold">Main Courses</h3>
+                            <div class="mt-2 space-y-2">
+                                <div class="flex justify-between">
+                                    <span>Grilled Salmon</span>
+                                    <span>$24.99</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Beef Tenderloin</span>
+                                    <span>$29.99</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="md:col-span-1">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-bold mb-4">Details</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="font-semibold">Hours</h3>
+                            <p class="text-gray-600">Mon-Fri: 11:00 AM - 10:00 PM</p>
+                            <p class="text-gray-600">Sat-Sun: 10:00 AM - 11:00 PM</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold">Location</h3>
+                            <p class="text-gray-600">123 Restaurant Street</p>
+                            <p class="text-gray-600">City, State 12345</p>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold">Contact</h3>
+                            <p class="text-gray-600">Phone: (555) 123-4567</p>
+                            <p class="text-gray-600">Email: info@restaurant.com</p>
+                        </div>
+                        <button class="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700">
+                            Make Reservation
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="../app.js"></script>
+</body>
+</html> 

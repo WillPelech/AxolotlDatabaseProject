@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Belli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Profile Sidebar -->
+            <div class="md:col-span-1">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="text-center">
+                        <img src="https://via.placeholder.com/150" alt="Profile" class="w-32 h-32 rounded-full mx-auto mb-4">
+                        <h2 class="text-2xl font-bold">John Doe</h2>
+                        <p class="text-gray-600">john.doe@example.com</p>
+                        <button class="mt-4 bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700">
+                            Edit Profile
+                        </button>
+                    </div>
+                    <div class="mt-6">
+                        <h3 class="font-semibold mb-2">Preferences</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" class="h-4 w-4 text-orange-600">
+                                <span class="ml-2">Vegetarian</span>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" class="h-4 w-4 text-orange-600">
+                                <span class="ml-2">Gluten-Free</span>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" class="h-4 w-4 text-orange-600">
+                                <span class="ml-2">Dairy-Free</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="md:col-span-2">
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                    <h2 class="text-2xl font-bold mb-4">Recent Activity</h2>
+                    <div class="space-y-4">
+                        <div class="flex items-center border-b pb-4">
+                            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                <span class="text-orange-600">★</span>
+                            </div>
+                            <div class="ml-4">
+                                <p class="font-semibold">Rated Restaurant Name</p>
+                                <p class="text-gray-600">4.5 stars - Great food and service!</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center border-b pb-4">
+                            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                <span class="text-orange-600">📝</span>
+                            </div>
+                            <div class="ml-4">
+                                <p class="font-semibold">Wrote a Review</p>
+                                <p class="text-gray-600">Amazing atmosphere and friendly staff</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                <span class="text-orange-600">❤️</span>
+                            </div>
+                            <div class="ml-4">
+                                <p class="font-semibold">Saved Restaurant</p>
+                                <p class="text-gray-600">Added to favorites</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saved Restaurants -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-bold mb-4">Saved Restaurants</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border rounded-lg p-4">
+                            <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4" alt="Restaurant" class="w-full h-32 object-cover rounded-md mb-2">
+                            <h3 class="font-semibold">Restaurant Name 1</h3>
+                            <p class="text-gray-600">Cuisine Type • $$$ • 4.5 ★</p>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4" alt="Restaurant" class="w-full h-32 object-cover rounded-md mb-2">
+                            <h3 class="font-semibold">Restaurant Name 2</h3>
+                            <p class="text-gray-600">Cuisine Type • $$ • 4.2 ★</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="../app.js"></script>
+</body>
+</html> 
