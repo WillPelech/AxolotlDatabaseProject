@@ -3,11 +3,12 @@ from google.oauth2 import service_account
 import pymysql
 
 # Replace these values with your actual credentials and instance details.
-DB_USER = ""  # Fill with DB User
+DB_USER = "Bolaji"  # Fill with DB User
 DB_NAME = "project"
+DB_PASSWORD = "axlotl"
 # Format: project:region:instance
 INSTANCE_CONNECTION_NAME = "axlotl:us-east4:restaurant-map"
-SERVICE_ACCOUNT_KEY = r"C:\path\to\json\key.json"
+SERVICE_ACCOUNT_KEY = r"/Users/bolajialabi/Downloads/axlotl-ecd21669772c.json"
 
 # Load credentials explicitly from the service account key file.
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_KEY)
@@ -21,6 +22,7 @@ def test_connection():
             INSTANCE_CONNECTION_NAME,
             "pymysql",  # Use the PyMySQL driver for MySQL.
             user=DB_USER,
+            password=DB_PASSWORD,
             db=DB_NAME
         )
 
