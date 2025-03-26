@@ -5,7 +5,7 @@ function Home() {
   return (
     <div className="text-center">
       <h1 className="text-4xl font-bold text-gray-900 mb-8">
-        Welcome to Belli
+        Welcome to FoodHub
       </h1>
       <p className="text-xl text-gray-600 mb-8">
         Discover amazing restaurants in your area
