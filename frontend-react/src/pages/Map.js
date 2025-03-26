@@ -11,7 +11,7 @@ function Map() {
     const initMap = () => {
       try {
         const mapOptions = {
-          center: { lat: 37.7749, lng: -122.4194 }, // San Francisco coordinates
+          center: { lat: 40.7128, lng: -74.0060 }, // New York City coordinates
           zoom: 13,
         };
 
@@ -19,21 +19,32 @@ function Map() {
         const newMap = new window.google.maps.Map(mapElement, mapOptions);
         setMap(newMap);
 
-        // Add sample markers
+        // Add sample NYC restaurant markers
         const sampleMarkers = [
           {
-            position: { lat: 37.7749, lng: -122.4194 },
-            title: 'Restaurant 1',
+            position: { lat: 40.7580, lng: -73.9855 }, // Times Square
+            title: 'Times Square Bistro',
             rating: 4.5,
             price: '$$$',
           },
           {
-            position: { lat: 37.7833, lng: -122.4167 },
-            title: 'Restaurant 2',
+            position: { lat: 40.7527, lng: -73.9772 }, // Grand Central
+            title: 'Grand Central Deli',
             rating: 4.2,
             price: '$$',
           },
-          // Add more markers as needed
+          {
+            position: { lat: 40.7614, lng: -73.9776 }, // Rockefeller Center
+            title: 'Rockefeller Cafe',
+            rating: 4.7,
+            price: '$$$',
+          },
+          {
+            position: { lat: 40.7484, lng: -73.9857 }, // Empire State Building
+            title: 'Empire State Restaurant',
+            rating: 4.3,
+            price: '$$$',
+          }
         ];
 
         const newMarkers = sampleMarkers.map((marker) => {
@@ -108,20 +119,32 @@ function Map() {
       {/* Sidebar */}
       <div className="w-80 bg-white shadow-lg overflow-y-auto">
         <div className="p-4">
-          <h2 className="text-xl font-bold mb-4">Nearby Restaurants</h2>
+          <h2 className="text-xl font-bold mb-4">NYC Restaurants</h2>
           <div className="space-y-4">
             {/* Restaurant List */}
             <div className="border-b pb-4">
-              <h3 className="font-semibold">Restaurant 1</h3>
+              <h3 className="font-semibold">Times Square Bistro</h3>
               <p className="text-sm text-gray-600">Rating: 4.5 ★</p>
               <p className="text-sm text-gray-600">Price: $$$</p>
-              <p className="text-sm text-gray-500">Distance: 0.2 miles</p>
+              <p className="text-sm text-gray-500">Location: Times Square</p>
             </div>
             <div className="border-b pb-4">
-              <h3 className="font-semibold">Restaurant 2</h3>
+              <h3 className="font-semibold">Grand Central Deli</h3>
               <p className="text-sm text-gray-600">Rating: 4.2 ★</p>
               <p className="text-sm text-gray-600">Price: $$</p>
-              <p className="text-sm text-gray-500">Distance: 0.4 miles</p>
+              <p className="text-sm text-gray-500">Location: Grand Central</p>
+            </div>
+            <div className="border-b pb-4">
+              <h3 className="font-semibold">Rockefeller Cafe</h3>
+              <p className="text-sm text-gray-600">Rating: 4.7 ★</p>
+              <p className="text-sm text-gray-600">Price: $$$</p>
+              <p className="text-sm text-gray-500">Location: Rockefeller Center</p>
+            </div>
+            <div className="border-b pb-4">
+              <h3 className="font-semibold">Empire State Restaurant</h3>
+              <p className="text-sm text-gray-600">Rating: 4.3 ★</p>
+              <p className="text-sm text-gray-600">Price: $$$</p>
+              <p className="text-sm text-gray-500">Location: Empire State Building</p>
             </div>
           </div>
         </div>
