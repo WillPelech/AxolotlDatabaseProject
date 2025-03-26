@@ -7,7 +7,7 @@ DB_USER = ""  # Fill with DB User
 DB_NAME = "project"
 # Format: project:region:instance
 INSTANCE_CONNECTION_NAME = "axlotl:us-east4:restaurant-map"
-SERVICE_ACCOUNT_KEY = r"C:\Users\Summant\Downloads\axlotl-01a230181ba4.json"
+SERVICE_ACCOUNT_KEY = r"C:\path\to\json\key.json"
 
 # Load credentials explicitly from the service account key file.
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_KEY)
