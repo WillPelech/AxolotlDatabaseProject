@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+const API_BASE_URL = 'http://localhost:5000/api';
+
 function Suggested() {
   const [selectedCuisine, setSelectedCuisine] = useState('all');
   const [priceRange, setPriceRange] = useState('all');
