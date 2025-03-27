@@ -1,6 +1,5 @@
 from google.cloud.sql.connector import Connector
 from google.oauth2 import service_account
-import pymysql
 import os
 from dotenv import load_dotenv
 
