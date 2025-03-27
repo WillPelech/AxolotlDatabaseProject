@@ -1,24 +1,14 @@
 {
-  "name": "axolotldatabaseproject",
+  "name": "restaurant-app",
   "version": "1.0.0",
-  "description": "Final project for databases",
-  "main": "index.js",
+  "description": "Restaurant Management Application",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "python db_cloud_connection/api.py",
+    "start:frontend": "cd frontend-react && npm start",
+    "install:all": "npm install && cd frontend-react && npm install"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/WillPelech/AxolotlDatabaseProject.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/WillPelech/AxolotlDatabaseProject/issues"
-  },
-  "homepage": "https://github.com/WillPelech/AxolotlDatabaseProject#readme",
-  "keywords": [],
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "concurrently": "^8.2.2"
   }
 }
