@@ -8,6 +8,12 @@ export const restaurantApi = {
         return response.json();
     },
 
+    getFoods: async (id) => {
+        const response = await fetch(`${API_BASE_URL}/restaurants/${id}/foods`);
+        if (!response.ok) throw new Error('Failed to fetch foods');
+        return response.json();
+    },
+
     // Get single restaurant
     getOne: async (id) => {
         const response = await fetch(`${API_BASE_URL}/restaurants/${id}`);

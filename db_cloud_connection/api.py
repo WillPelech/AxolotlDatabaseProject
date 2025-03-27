@@ -218,7 +218,7 @@ def verify_auth():
         return jsonify({"error": str(e)}), 500
     
 
-@app.route('/api/restaurant', methods=['GET'])
+@app.route('/api/restaurants', methods=['GET'])
 def get_all_restaurants():
     try:
         connection = get_db_connection()
@@ -236,10 +236,34 @@ def get_all_restaurants():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-
-@app.route('/api/restaurant/<int:id>', methods=['GET'])
-def get_restaurant_by_id(id):
+@app.route('/api/restaurants/<int:id>/foods', methods=['GET'])
+def get_restaurant_foods():
     try:
+        restID = request.json["id"]
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("SELECT FoodName FROM Food WHERE RestaurantID = %s", restID)
+        foodlist = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+        if (foodlist):
+            return jsonify({
+                "foodlist": foodlist
+            })
+        else:
+            return jsonify({
+                "message":"restaurant has no foods"
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/restaurants/<int:id>', methods=['GET'])
+def get_restaurant_by_id():
+    try:
+        id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT * FROM Restaurants WHERE Address = %s",(id))
@@ -260,12 +284,12 @@ def get_restaurant_by_id(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/restaurant', methods=['POST'])
+@app.route('/api/restaurants', methods=['POST'])
 def create_restaurant():
     try:
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        data = request.json
+        data = request.json["restaurantData"]
         cursor.execute("SELECT MAX(CustomerID) FROM Customer")
         max_id = cursor.fetchone()[0]
         next_id = 1 if max_id is None else max_id + 1
@@ -281,17 +305,19 @@ def create_restaurant():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/restaurant/<int:id>', methods=['PUT'])
+@app.route('/api/restaurants/<int:id>', methods=['PUT'])
 def update_restaurant():
     try:
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        data=  request.json
+        data =  request.json
+        restaurantData = data["restaurantData"]
         cursor.execute("""
                 UPDATE restaurants 
-                SET name = %s, address = %s, cuisine = %s
+                SET RestaurantName = %s, Category = %s, Rating = %s, PhoneNumber = %s, Address = %s
                 WHERE id = %s
-            """, (data['name'], data['category'], data['rating'], data['phone_number'], data['address'], id))
+            """, (restaurantData['RestaurantName'], restaurantData['Category'], restaurantData['Rating'],
+                       restaurantData['PhoneNumber'], restaurantData['Address'], data["id"]))
         cursor.close()
         connection.commit()
         connection.close()
@@ -302,6 +328,7 @@ def update_restaurant():
 @app.route('/api/restaurants/<int:id>', methods = ['DELETE'])
 def delete_restaurant():
     try:
+        id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT * FROM Restaurants WHERE RestaurantID = %s",(id))
