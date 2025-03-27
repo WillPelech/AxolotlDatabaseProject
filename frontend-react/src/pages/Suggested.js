@@ -26,6 +26,8 @@ function Suggested() {
     { value: '$$$$', label: '$$$$' }
   ];
 
+  const SuggestRestaurants = [];
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Filters */}
@@ -91,6 +93,31 @@ function Suggested() {
         </Link>
 
         {/* Add more restaurant cards here */}
+        {/* This next part will iterate through all the restaurants when */}
+        {SuggestRestaurants.map((restaurant) => {
+          <Link to="/restaurant/1" className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+          <img
+            src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4"
+            alt="Restaurant"
+            className="w-full h-48 object-cover"
+          />
+
+          <div className="p-4">
+            <h3 className="text-xl font-semibold mb-2">{restaurant.name}</h3>
+            <p className="text-gray-600 mb-2">{restaurant.category} • $$$ • {restaurant.rating} ★</p>
+            <p className="text-sm text-gray-500 mb-4">{restaurant.address}</p>
+            <div className="flex items-center justify-between">
+              <span className="text-orange-600 font-medium">Open now would need some difficult logic with gettin the hours then calculating the current time</span>
+              <button className="text-orange-600 hover:text-orange-700">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </Link>
+        } )}
+        
       </div>
 
       {/* Pagination */}
