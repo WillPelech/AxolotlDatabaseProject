@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import RestaurantList from './components/RestaurantList';
 import Suggested from './pages/Suggested';
 import Map from './pages/Map';
+import './App.css';
 
 function App() {
   return (
