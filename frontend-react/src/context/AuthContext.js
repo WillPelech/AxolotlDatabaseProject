@@ -1,132 +1,107 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [authState, setAuthState] = useState({
-        isAuthenticated: false,
-        user: null,
-        loading: true
-    });
-
-    useEffect(() => {
-        // Check for existing token on mount
-        const token = localStorage.getItem('token');
-        if (token) {
-            verifyToken(token);
-        } else {
-            setAuthState(prev => ({ ...prev, loading: false }));
-        }
-    }, []);
-
-    const verifyToken = async (token) => {
-        try {
-            const response = await fetch('http://localhost:5000/api/auth/verify', {
-                method: 'POST',
-                headers: {
-                    'Authorization': token
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setAuthState({
-                    isAuthenticated: true,
-                    user: data.user,
-                    loading: false
-                });
-            } else {
-                localStorage.removeItem('token');
-                setAuthState({
-                    isAuthenticated: false,
-                    user: null,
-                    loading: false
-                });
-            }
-        } catch (error) {
-            console.error('Token verification failed:', error);
-            localStorage.removeItem('token');
-            setAuthState({
-                isAuthenticated: false,
-                user: null,
-                loading: false
-            });
-        }
-    };
+    const [user, setUser] = useState(null);
+    const [error, setError] = useState(null);
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+    const [accountType, setAccountType] = useState('customer'); // 'customer' or 'restaurant'
 
     const login = async (username, password) => {
         try {
+            setError(null);
             const response = await fetch('http://localhost:5000/api/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({
+                    username,
+                    password
+                })
             });
 
             const data = await response.json();
 
-            if (response.ok) {
-                localStorage.setItem('token', data.token);
-                setAuthState({
-                    isAuthenticated: true,
-                    user: data.user,
-                    loading: false
-                });
-                return { success: true };
-            } else {
-                return { success: false, error: data.error };
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
             }
-        } catch (error) {
-            console.error('Login failed:', error);
-            return { success: false, error: 'Login failed. Please try again.' };
+
+            if (data.user) {
+                const userData = {
+                    ...data.user,
+                    isAuthenticated: true
+                };
+                setUser(userData);
+                localStorage.setItem('user', JSON.stringify(userData));
+                
+                // Log for debugging
+                console.log('Account type:', userData.accountType);
+                console.log('Is Restaurant account:', userData.isRestaurant);
+                
+                return userData;
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            setError(err.message || 'Login failed');
+            throw err;
         }
     };
 
-    const signup = async (userData) => {
+    const signup = async (username, email, password, dateOfBirth) => {
         try {
             const response = await fetch('http://localhost:5000/api/auth/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(userData)
+                body: JSON.stringify({
+                    username,
+                    email,
+                    password,
+                    dateOfBirth,
+                    accountType: accountType
+                })
             });
 
             const data = await response.json();
 
-            if (response.ok) {
-                return { success: true };
-            } else {
-                return { success: false, error: data.error };
+            if (!response.ok) {
+                throw new Error(data.error || 'Signup failed');
             }
-        } catch (error) {
-            console.error('Signup failed:', error);
-            return { success: false, error: 'Signup failed. Please try again.' };
+
+            setUser(data.user);
+            setError(null);
+            return data;
+        } catch (err) {
+            setError(err.message);
+            throw err;
         }
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        setAuthState({
-            isAuthenticated: false,
-            user: null,
-            loading: false
-        });
+        setUser(null);
+        setError(null);
     };
 
-    const isRestaurantOwner = () => {
-        return authState.user?.type === 'restaurant';
+    const value = {
+        user,
+        error,
+        showAuthModal,
+        setShowAuthModal,
+        authMode,
+        setAuthMode,
+        accountType,
+        setAccountType,
+        login,
+        signup,
+        logout
     };
 
     return (
-        <AuthContext.Provider value={{
-            ...authState,
-            login,
-            signup,
-            logout,
-            isRestaurantOwner
-        }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

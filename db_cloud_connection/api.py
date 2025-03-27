@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import hashlib
 import jwt
 from datetime import datetime, timezone, timedelta
+from flask_cors import cross_origin
 
 import pymysql.cursors
 
@@ -38,7 +39,14 @@ def get_db_connection():
     return connection
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    # Ensure the password is a string and encode it consistently
+    password_str = str(password).encode('utf-8')
+    return hashlib.sha256(password_str).hexdigest()
+
+def check_password(input_password, stored_password):
+    print(f"Checking password hash: {hash_password(input_password)}")
+    print(f"Against stored hash: {stored_password}")
+    return hash_password(input_password) == stored_password
 
 def generate_token(user_id):
     return jwt.encode(
@@ -63,28 +71,54 @@ def signup():
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        # Check if username or email already exists
-        cursor.execute("SELECT CustomerID FROM Customer WHERE Username = %s OR Email = %s", 
-                      (data['username'], data['email']))
+        # Check if username or email already exists in both tables
+        cursor.execute("""
+            SELECT CustomerID FROM Customer 
+            WHERE Username = %s OR Email = %s
+        """, (data['username'], data['email']))
         if cursor.fetchone():
             return jsonify({"error": "Username or email already exists"}), 400
 
-        # Get the next CustomerID
-        cursor.execute("SELECT MAX(CustomerID) FROM Customer")
-        max_id = cursor.fetchone()[0]
-        next_id = 1 if max_id is None else max_id + 1
+        cursor.execute("""
+            SELECT AccountID FROM Restaurant_Account 
+            WHERE Username = %s OR Email = %s
+        """, (data['username'], data['email']))
+        if cursor.fetchone():
+            return jsonify({"error": "Username or email already exists"}), 400
 
-        # Insert new customer
-        sql = """
-        INSERT INTO Customer (CustomerID, DateOfBirth, Username, Email, Password)
-        VALUES (%s, %s, %s, %s, %s)
-        """
-        cursor.execute(sql, (
-            next_id,
-            data['dateOfBirth'],
+        # Get the next AccountID for Restaurant_Account
+        cursor.execute("SELECT MAX(AccountID) FROM Restaurant_Account")
+        max_acc_id = cursor.fetchone()[0]
+        next_acc_id = 1 if max_acc_id is None else max_acc_id + 1
+
+        # Insert new restaurant account
+        cursor.execute("""
+            INSERT INTO Restaurant_Account (AccountID, Username, Email, Password)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            next_acc_id,
             data['username'],
             data['email'],
             hash_password(data['password'])
+        ))
+
+        # Get the next RestaurantID
+        cursor.execute("SELECT MAX(RestaurantID) FROM Restaurant")
+        max_rest_id = cursor.fetchone()[0]
+        next_rest_id = 1 if max_rest_id is None else max_rest_id + 1
+
+        # Insert new restaurant with default values
+        cursor.execute("""
+            INSERT INTO Restaurant (RestaurantID, RestaurantName, Category, Rating, PhoneNumber, Address, AccountID)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            next_rest_id,
+            data['username'] + "'s Restaurant",  # Default name
+            'General',  # Default category
+            0.0,  # Default rating
+            '',  # Empty phone number
+            '',  # Empty address
+            next_acc_id  # Link to Restaurant_Account
         ))
         
         connection.commit()
@@ -92,71 +126,84 @@ def signup():
         connection.close()
         
         return jsonify({
-            "message": "Account created successfully",
-            "customerId": next_id
+            "message": "Restaurant account created successfully",
+            "accountId": next_acc_id,
+            "restaurantId": next_rest_id
         }), 201
     except Exception as e:
+        print(f"Signup error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/auth/login', methods=['POST'])
+def handle_options():
+    response = jsonify({})
+    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response, 200
+
+@app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
+@cross_origin()
 def login():
+    if request.method == 'OPTIONS':
+        return handle_options()
+
     try:
-        data = request.json
-        print(f"Login attempt for username/email: {data['username']}")
-        
+        data = request.get_json()
+        username_or_email = data.get('username')
+        password = data.get('password')
+
+        print(f"Login attempt for username/email: {username_or_email}")
         connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        cursor = connection.cursor()
 
-        # Find user by username or email
-        cursor.execute("""
-            SELECT CustomerID, Username, Email, Password 
-            FROM Customer 
-            WHERE (Username = %s OR Email = %s)
-        """, (data['username'], data['username']))
-        
+        # First try Customer table
+        cursor.execute(
+            "SELECT CustomerID, Username, Password, Email FROM Customer WHERE (Username = %s OR Email = %s)",
+            (username_or_email, username_or_email)
+        )
         user = cursor.fetchone()
-        print(f"Database query result: {user}")
-        
-        cursor.close()
-        connection.close()
+        account_type = 'customer'
 
+        # If not found in Customer table, try Restaurant_Account table
         if not user:
-            print("User not found")
-            return jsonify({"error": "Invalid credentials"}), 401
+            cursor.execute(
+                "SELECT AccountID, Username, Password, Email FROM Restaurant_Account WHERE (Username = %s OR Email = %s)",
+                (username_or_email, username_or_email)
+            )
+            user = cursor.fetchone()
+            account_type = 'restaurant'
 
-        hashed_input = hash_password(data['password'])
-        stored_password = user['Password']
-        
-        # Check if stored password is hashed or plain text
-        if len(stored_password) == 64:  # SHA-256 hash is 64 characters
-            # Password is already hashed
-            if stored_password != hashed_input:
-                print("Password mismatch (hashed)")
-                return jsonify({"error": "Invalid credentials"}), 401
+        print(f"Database query result: {user}")
+        print(f"Account type: {account_type}")
+
+        if user:
+            stored_password = user[2]  # Password is now always at index 2 due to explicit column selection
+            if check_password(password, stored_password):
+                response = {
+                    'message': f'Login successful - You are logged in as a {account_type} account',
+                    'user': {
+                        'username': user[1],  # Username
+                        'email': user[3],     # Email
+                        'accountType': account_type,
+                        'accountId': user[0],  # ID is always at index 0
+                        'isRestaurant': account_type == 'restaurant'
+                    }
+                }
+                return jsonify(response), 200
+            else:
+                return jsonify({'error': 'Invalid password'}), 401
         else:
-            # Password is plain text, compare with plain text
-            if stored_password != data['password']:
-                print("Password mismatch (plain text)")
-                return jsonify({"error": "Invalid credentials"}), 401
-            # Update the password to hashed version
-            update_password_to_hash(user['CustomerID'], hashed_input)
+            print("User not found")
+            return jsonify({'error': 'User not found'}), 401
 
-        # Generate JWT token
-        token = generate_token(user['CustomerID'])
-        print("Login successful")
-
-        return jsonify({
-            "message": "Login successful",
-            "token": token,
-            "user": {
-                "id": user['CustomerID'],
-                "username": user['Username'],
-                "email": user['Email']
-            }
-        })
     except Exception as e:
         print(f"Login error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': 'Login failed'}), 500
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals():
+            connection.close()
 
 def update_password_to_hash(customer_id, hashed_password):
     try:
@@ -296,8 +343,8 @@ def create_restaurant():
 
         cursor.execute("""
                 INSERT INTO Restaurant
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (next_id, data['name'], data['category'], data['rating'], data['phone_number'], data['address']))
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (next_id, data['name'], data['category'], data['rating'], data['phone_number'], data['address'], data['accountID']))
         cursor.close()
         connection.commit()
         connection.close()

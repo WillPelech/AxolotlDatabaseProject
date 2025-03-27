@@ -1,7 +1,18 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from '../components/AuthModal';
 
 function Home() {
+  const navigate = useNavigate();
+  const { showAuthModal, setShowAuthModal, setAuthMode, setAccountType } = useAuth();
+
+  const handleGetStarted = () => {
+    setAccountType('restaurant');
+    setAuthMode('signup');
+    setShowAuthModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -28,7 +39,7 @@ function Home() {
               <p className="text-gray-600 mb-4">Discover the best local restaurants in your area</p>
               <Link
                 to="/suggested"
-                className="inline-block bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                className="inline-block bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
               >
                 Explore
               </Link>
@@ -39,7 +50,7 @@ function Home() {
               <p className="text-gray-600 mb-4">See restaurant locations on an interactive map</p>
               <Link
                 to="/map"
-                className="inline-block bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                className="inline-block bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
               >
                 Open Map
               </Link>
@@ -48,12 +59,12 @@ function Home() {
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Restaurant Owners</h3>
               <p className="text-gray-600 mb-4">Manage your restaurant and reach more customers</p>
-              <Link
-                to="/restaurant-list"
-                className="inline-block bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+              <button
+                onClick={handleGetStarted}
+                className="w-full flex items-center justify-center px-8 py-3 border-2 border-orange-600 text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 md:py-4 md:text-lg md:px-10 transition-colors"
               >
                 Get Started
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -82,6 +93,8 @@ function Home() {
           </div>
         </div>
       </div>
+
+      <AuthModal />
     </div>
   );
 }
