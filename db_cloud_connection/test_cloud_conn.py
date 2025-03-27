@@ -30,8 +30,8 @@ def test_connection():
 
         cursor = connection.cursor()
         # Execute a test query.
-        cursor.execute("SELECT * FROM Restaurant")
-        result = cursor.fetchone()
+        cursor.execute("SELECT * FROM Customer")
+        result = cursor.fetchall()
         print("Connection successful, test query result:", result)
 
         cursor.close()
