@@ -7,7 +7,9 @@ import os
 from dotenv import load_dotenv
 import hashlib
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
+
+import pymysql.cursors
 
 # Load environment variables
 load_dotenv()
@@ -40,7 +42,7 @@ def hash_password(password):
 
 def generate_token(user_id):
     return jwt.encode(
-        {'user_id': user_id, 'exp': datetime.utcnow() + timedelta(days=1)},
+        {'user_id': user_id, 'exp': datetime.now(timezone.utc) + timedelta(days=1)},
         JWT_SECRET,
         algorithm='HS256'
     )
@@ -205,6 +207,105 @@ def verify_auth():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/api/restaurant', methods=['GET'])
+def get_all_restaurants():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("SELECT * FROM Restaurants")
+        restaurants = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        return jsonify({
+            "restaurants": restaurants
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/api/restaurant/<int:id>', methods=['GET'])
+def get_restaurant_by_id(id):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM Restaurants WHERE Address = %s",(id))
+        restaurant = cursor.fetchone()
+            
+        cursor.close()
+        connection.close()
+
+        if (restaurant):
+            return jsonify({
+                "message":"restaurant {id} selected successfully",
+                "restaurant": restaurant
+            })
+        else:
+            return jsonify({
+                "message":"restaurant not found"
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/restaurant', methods=['POST'])
+def create_restaurant():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        data = request.json
+        cursor.execute("SELECT MAX(CustomerID) FROM Customer")
+        max_id = cursor.fetchone()[0]
+        next_id = 1 if max_id is None else max_id + 1
+
+        cursor.execute("""
+                INSERT INTO Restaurant
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (next_id, data['name'], data['category'], data['rating'], data['phone_number'], data['address']))
+        cursor.close()
+        connection.commit()
+        connection.close()
+        return jsonify({'message': 'Restaurant created successfully'}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/restaurant/<int:id>', methods=['PUT'])
+def update_restaurant():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        data=  request.json
+        cursor.execute("""
+                UPDATE restaurants 
+                SET name = %s, address = %s, cuisine = %s
+                WHERE id = %s
+            """, (data['name'], data['category'], data['rating'], data['phone_number'], data['address'], id))
+        cursor.close()
+        connection.commit()
+        connection.close()
+        return jsonify({'message': 'Restaurant updated successfully'})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/restaurants/<int:id>', methods = ['DELETE'])
+def delete_restaurant():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM Restaurants WHERE RestaurantID = %s",(id))
+        restaurant = cursor.fetchone()
+        return_val = jsonify({
+            "message":"restaurant deleted successfully",
+            "restaurant_info": restaurant
+        })
+        cursor.execute("DELETE FROM Restaurants WHERE RestaurantID = %s",(id))
+        return return_val
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
