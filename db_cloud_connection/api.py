@@ -101,25 +101,6 @@ def signup():
             data['email'],
             hash_password(data['password'])
         ))
-
-        # Get the next RestaurantID
-        cursor.execute("SELECT MAX(RestaurantID) FROM Restaurant")
-        max_rest_id = cursor.fetchone()[0]
-        next_rest_id = 1 if max_rest_id is None else max_rest_id + 1
-
-        # Insert new restaurant with default values
-        cursor.execute("""
-            INSERT INTO Restaurant (RestaurantID, RestaurantName, Category, Rating, PhoneNumber, Address, AccountID)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-            next_rest_id,
-            data['username'] + "'s Restaurant",  # Default name
-            'General',  # Default category
-            0.0,  # Default rating
-            '',  # Empty phone number
-            '',  # Empty address
-            next_acc_id  # Link to Restaurant_Account
-        ))
         
         connection.commit()
         cursor.close()
@@ -127,8 +108,7 @@ def signup():
         
         return jsonify({
             "message": "Restaurant account created successfully",
-            "accountId": next_acc_id,
-            "restaurantId": next_rest_id
+            "accountId": next_acc_id
         }), 201
     except Exception as e:
         print(f"Signup error: {str(e)}")
