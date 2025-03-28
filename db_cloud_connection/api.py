@@ -385,13 +385,13 @@ def delete_restaurant():
         id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM Restaurants WHERE RestaurantID = %s",(id))
+        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s", (id,))
         restaurant = cursor.fetchone()
         return_val = jsonify({
-            "message":"restaurant deleted successfully",
+            "message": f"Restaurant {id} deleted successfully",
             "restaurant_info": restaurant
         })
-        cursor.execute("DELETE FROM Restaurants WHERE RestaurantID = %s",(id))
+        cursor.execute("DELETE FROM Restaurant WHERE RestaurantID = %s", (id,))
         return return_val
     except Exception as e:
         return jsonify({"error": str(e)}), 500
