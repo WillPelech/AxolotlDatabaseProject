@@ -86,29 +86,56 @@ def signup():
         if cursor.fetchone():
             return jsonify({"error": "Username or email already exists"}), 400
 
-        # Get the next AccountID for Restaurant_Account
-        cursor.execute("SELECT MAX(AccountID) FROM Restaurant_Account")
-        max_acc_id = cursor.fetchone()[0]
-        next_acc_id = 1 if max_acc_id is None else max_acc_id + 1
+        account_type = data.get('accountType', 'customer')  # Default to customer if not specified
 
-        # Insert new restaurant account
-        cursor.execute("""
-            INSERT INTO Restaurant_Account (AccountID, Username, Email, Password)
-            VALUES (%s, %s, %s, %s)
-        """, (
-            next_acc_id,
-            data['username'],
-            data['email'],
-            hash_password(data['password'])
-        ))
+        if account_type == 'restaurant':
+            # Get the next AccountID for Restaurant_Account
+            cursor.execute("SELECT MAX(AccountID) FROM Restaurant_Account")
+            max_acc_id = cursor.fetchone()[0]
+            next_acc_id = 1 if max_acc_id is None else max_acc_id + 1
+
+            # Insert new restaurant account
+            cursor.execute("""
+                INSERT INTO Restaurant_Account (AccountID, Username, Email, Password)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                next_acc_id,
+                data['username'],
+                data['email'],
+                hash_password(data['password'])
+            ))
+            
+            account_id = next_acc_id
+            message = "Restaurant account created successfully"
+        else:
+            # Get the next CustomerID
+            cursor.execute("SELECT MAX(CustomerID) FROM Customer")
+            max_cust_id = cursor.fetchone()[0]
+            next_cust_id = 1 if max_cust_id is None else max_cust_id + 1
+
+            # Insert new customer account
+            cursor.execute("""
+                INSERT INTO Customer (CustomerID, Username, Password, Email, DateOfBirth)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                next_cust_id,
+                data['username'],
+                hash_password(data['password']),
+                data['email'],
+                data.get('dateOfBirth')
+            ))
+            
+            account_id = next_cust_id
+            message = "Customer account created successfully"
         
         connection.commit()
         cursor.close()
         connection.close()
         
         return jsonify({
-            "message": "Restaurant account created successfully",
-            "accountId": next_acc_id
+            "message": message,
+            "accountId": account_id,
+            "accountType": account_type
         }), 201
     except Exception as e:
         print(f"Signup error: {str(e)}")
@@ -251,7 +278,7 @@ def get_all_restaurants():
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
 
-        cursor.execute("SELECT * FROM Restaurants")
+        cursor.execute("SELECT * FROM Restaurant")
         restaurants = cursor.fetchall()
 
         cursor.close()
@@ -293,20 +320,20 @@ def get_restaurant_by_id():
         id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM Restaurants WHERE Address = %s",(id))
+        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s", (id,))
         restaurant = cursor.fetchone()
             
         cursor.close()
         connection.close()
 
-        if (restaurant):
+        if restaurant:
             return jsonify({
-                "message":"restaurant {id} selected successfully",
+                "message": f"Restaurant {id} selected successfully",
                 "restaurant": restaurant
             })
         else:
             return jsonify({
-                "message":"restaurant not found"
+                "message": "Restaurant not found"
             })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -317,7 +344,7 @@ def create_restaurant():
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
         data = request.json["restaurantData"]
-        cursor.execute("SELECT MAX(CustomerID) FROM Customer")
+        cursor.execute("SELECT MAX(RestaurantID) FROM Restaurant")
         max_id = cursor.fetchone()[0]
         next_id = 1 if max_id is None else max_id + 1
 
@@ -337,12 +364,12 @@ def update_restaurant():
     try:
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        data =  request.json
+        data = request.json
         restaurantData = data["restaurantData"]
         cursor.execute("""
-                UPDATE restaurants 
+                UPDATE Restaurant 
                 SET RestaurantName = %s, Category = %s, Rating = %s, PhoneNumber = %s, Address = %s
-                WHERE id = %s
+                WHERE RestaurantID = %s
             """, (restaurantData['RestaurantName'], restaurantData['Category'], restaurantData['Rating'],
                        restaurantData['PhoneNumber'], restaurantData['Address'], data["id"]))
         cursor.close()
