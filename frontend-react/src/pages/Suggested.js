@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { restaurantApi } from '../services/api';
 
 function Suggested() {
   const [selectedCuisine, setSelectedCuisine] = useState('all');
   const [priceRange, setPriceRange] = useState('all');
+  const [restaurants, setRestaurants] = useState([]);
+  const [error, setError] = useState(null);
 
   const cuisines = [
     'all',
@@ -26,7 +29,23 @@ function Suggested() {
     { value: '$$$$', label: '$$$$' }
   ];
 
-  const SuggestRestaurants = [];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+          const data = await restaurantApi.getAll();
+          console.log(data)
+          setRestaurants(data);
+          // console.log(data.restaurants[0])
+          console.log("Updated Restaurants (before state re-renders):", restaurants);
+      } catch (err) {
+          setError(err.message);
+      }
+      };
+
+      fetchData();
+      console.log(restaurants.restaurants);
+  });
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -69,8 +88,7 @@ function Suggested() {
       </div>
 
       {/* Restaurant Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Restaurant Card */}
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link to="/restaurant/1" className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
           <img
             src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4"
@@ -78,7 +96,7 @@ function Suggested() {
             className="w-full h-48 object-cover"
           />
           <div className="p-4">
-            <h3 className="text-xl font-semibold mb-2">Restaurant Name</h3>
+            <h3 className="text-xl font-semibold mb-2">Restaurant 1</h3>
             <p className="text-gray-600 mb-2">Cuisine Type • $$$ • 4.5 ★</p>
             <p className="text-sm text-gray-500 mb-4">123 Restaurant Street, City, State</p>
             <div className="flex items-center justify-between">
@@ -90,11 +108,14 @@ function Suggested() {
               </button>
             </div>
           </div>
-        </Link>
+        </Link> */}
 
         {/* Add more restaurant cards here */}
         {/* This next part will iterate through all the restaurants when */}
-        {SuggestRestaurants.map((restaurant) => {
+        {restaurants.restaurants?.length > 0
+        ? (
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+            {restaurants.restaurants.map((restaurant) => (
           <Link to="/restaurant/1" className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
           <img
             src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4"
@@ -103,11 +124,11 @@ function Suggested() {
           />
 
           <div className="p-4">
-            <h3 className="text-xl font-semibold mb-2">{restaurant.name}</h3>
-            <p className="text-gray-600 mb-2">{restaurant.category} • $$$ • {restaurant.rating} ★</p>
-            <p className="text-sm text-gray-500 mb-4">{restaurant.address}</p>
+            <h3 className="text-xl font-semibold mb-2">{restaurant.RestaurantName}</h3>
+            <p className="text-gray-600 mb-2">{restaurant.Category} • $$$ • {restaurant.Rating} ★</p>
+            <p className="text-sm text-gray-500 mb-4">{restaurant.Address}</p>
             <div className="flex items-center justify-between">
-              <span className="text-orange-600 font-medium">Open now would need some difficult logic with gettin the hours then calculating the current time</span>
+              {/* <span className="text-orange-600 font-medium">Open now would need some difficult logic with gettin the hours then calculating the current time</span> */}
               <button className="text-orange-600 hover:text-orange-700">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -116,9 +137,12 @@ function Suggested() {
             </div>
           </div>
         </Link>
-        } )}
-        
-      </div>
+        ))} 
+          </div>
+         
+        ) : (
+          <div className="empty"> </div>
+        ) }
 
       {/* Pagination */}
       <div className="mt-8 flex justify-center">

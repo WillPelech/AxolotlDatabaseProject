@@ -1,24 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import AuthModal from './AuthModal';
 
-const Navbar = () => {
-    const { isAuthenticated, user, logout, isRestaurantOwner } = useAuth();
+function Navbar() {
     const navigate = useNavigate();
-    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-    const [authMode, setAuthMode] = useState('login');
+    const { user, logout, setShowAuthModal, setAuthMode } = useAuth();
 
-    const handleLoginClick = (e) => {
-        e.preventDefault();
-        setAuthMode('login');
-        setIsAuthModalOpen(true);
+    const handleLogin = () => {
+        navigate('/login');
     };
 
-    const handleSignupClick = (e) => {
-        e.preventDefault();
-        setAuthMode('signup');
-        setIsAuthModalOpen(true);
+    const handleSignup = () => {
+        navigate('/signup');
     };
 
     const handleLogout = () => {
@@ -31,51 +24,45 @@ const Navbar = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     <div className="flex">
-                        <div className="flex-shrink-0 flex items-center">
-                            <Link to="/" className="text-2xl font-bold text-orange-600">
-                                FoodHub
-                            </Link>
-                        </div>
+                        <Link to="/" className="flex-shrink-0 flex items-center">
+                            <span className="text-2xl font-bold text-orange-600">FoodHub</span>
+                        </Link>
                     </div>
+
                     <div className="flex items-center">
                         {user ? (
-                            <>
-                                <span className="text-gray-600 px-3 py-2 text-sm font-medium">
-                                    Welcome, {user.username} ({user.type === 'restaurant' ? 'Restaurant Owner' : 'Customer'})
+                            <div className="flex items-center space-x-4">
+                                <span className="text-gray-700">
+                                    {user.username} ({user.accountType === 'restaurant' ? 'Restaurant Account' : 'Customer Account'})
                                 </span>
                                 <button
                                     onClick={handleLogout}
-                                    className="ml-4 bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-orange-700"
+                                    className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Logout
                                 </button>
-                            </>
+                            </div>
                         ) : (
-                            <>
+                            <div className="flex items-center space-x-4">
                                 <button
-                                    onClick={handleLoginClick}
-                                    className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                                    onClick={handleLogin}
+                                    className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Login
                                 </button>
                                 <button
-                                    onClick={handleSignupClick}
-                                    className="ml-4 bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-orange-700"
+                                    onClick={handleSignup}
+                                    className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Sign Up
                                 </button>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
-            <AuthModal
-                isOpen={isAuthModalOpen}
-                onClose={() => setIsAuthModalOpen(false)}
-                mode={authMode}
-            />
         </nav>
     );
-};
+}
 
 export default Navbar; 
