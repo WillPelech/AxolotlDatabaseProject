@@ -224,7 +224,7 @@ def get_all_restaurants():
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
 
-        cursor.execute("SELECT * FROM Restaurants")
+        cursor.execute("SELECT * FROM Restaurant")
         restaurants = cursor.fetchall()
 
         cursor.close()
@@ -266,7 +266,7 @@ def get_restaurant_by_id():
         id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM Restaurants WHERE Address = %s",(id))
+        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s",(id))
         restaurant = cursor.fetchone()
             
         cursor.close()
@@ -313,7 +313,7 @@ def update_restaurant():
         data =  request.json
         restaurantData = data["restaurantData"]
         cursor.execute("""
-                UPDATE restaurants 
+                UPDATE Restaurant 
                 SET RestaurantName = %s, Category = %s, Rating = %s, PhoneNumber = %s, Address = %s
                 WHERE id = %s
             """, (restaurantData['RestaurantName'], restaurantData['Category'], restaurantData['Rating'],
@@ -331,13 +331,13 @@ def delete_restaurant():
         id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM Restaurants WHERE RestaurantID = %s",(id))
+        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s",(id))
         restaurant = cursor.fetchone()
         return_val = jsonify({
             "message":"restaurant deleted successfully",
             "restaurant_info": restaurant
         })
-        cursor.execute("DELETE FROM Restaurants WHERE RestaurantID = %s",(id))
+        cursor.execute("DELETE FROM Restaurant WHERE RestaurantID = %s",(id))
         return return_val
     except Exception as e:
         return jsonify({"error": str(e)}), 500
