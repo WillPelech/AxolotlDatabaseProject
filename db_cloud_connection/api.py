@@ -224,7 +224,7 @@ def get_all_restaurants():
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
 
-        cursor.execute("SELECT * FROM Restaurants")
+        cursor.execute("SELECT * FROM Restaurant")
         restaurants = cursor.fetchall()
 
         cursor.close()
