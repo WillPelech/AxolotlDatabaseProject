@@ -38,6 +38,7 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('user', JSON.stringify(userData));
                 
                 // Log for debugging
+                console.log(userData);
                 console.log('Account type:', userData.accountType);
                 console.log('Is Restaurant account:', userData.isRestaurant);
                 

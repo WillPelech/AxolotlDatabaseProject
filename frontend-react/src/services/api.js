@@ -54,5 +54,15 @@ export const restaurantApi = {
         });
         if (!response.ok) throw new Error('Failed to delete restaurant');
         return response.json();
+    },
+
+    // get visited restaurants
+    getReviewedRestaurants: async (id) => {
+        const response = await fetch(`${API_BASE_URL}/customers/${id}/restaurants`, {
+            method: 'GET',
+        });
+        if(!response.ok) throw new Error('Failed to get reviewed restaurants');
+        return response.json();
     }
+
 }; 

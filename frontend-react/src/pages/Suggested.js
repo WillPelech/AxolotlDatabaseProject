@@ -33,18 +33,16 @@ function Suggested() {
     const fetchData = async () => {
       try {
           const data = await restaurantApi.getAll();
-          console.log(data)
           setRestaurants(data);
           // console.log(data.restaurants[0])
           console.log("Updated Restaurants (before state re-renders):", restaurants);
       } catch (err) {
           setError(err.message);
       }
-      };
+    };
 
-      fetchData();
-      console.log(restaurants.restaurants);
-  });
+    fetchData();
+  },[]);
 
 
   return (

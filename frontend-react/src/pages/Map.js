@@ -1,19 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { restaurantApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function Map() {
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [error, setError] = useState(null);
-
+  const [reviewRestaurants, setReviewRestaurants] = useState([]);
+  const { user } = useAuth();
   useEffect(() => {
     // Initialize Google Maps
+    const fetchReviewedRestaurants = async () => {
+      try{
+        console.log(user.accountId)
+        const data = await restaurantApi.getReviewedRestaurants(user.accountId);
+        setReviewRestaurants(data);
+        console.log(data)
+      } catch (err) {
+        setError(err.message);
+      };
+      console.log(reviewRestaurants.restaurants);
+    }
+    fetchReviewedRestaurants();
     const initMap = () => {
       try {
         const mapOptions = {
           center: { lat: 40.7128, lng: -74.0060 }, // New York City coordinates
           zoom: 13,
         };
-
         const mapElement = document.getElementById('map');
         const newMap = new window.google.maps.Map(mapElement, mapOptions);
         setMap(newMap);
@@ -101,7 +115,7 @@ function Map() {
     };
   }, []);
 
-  let restaurants = []; // will get list of restaurant objects using sql db
+   // will get list of restaurant objects using sql db
 
   if (error) {
     return (
