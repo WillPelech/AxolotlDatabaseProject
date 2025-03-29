@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -8,6 +8,22 @@ export const AuthProvider = ({ children }) => {
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
     const [accountType, setAccountType] = useState('customer'); // 'customer' or 'restaurant'
+
+    // Load user from localStorage on initial render
+    useEffect(() => {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+            setUser(JSON.parse(savedUser));
+        }
+    }, []);
+
+    const isAuthenticated = () => {
+        return !!user;
+    };
+
+    const isRestaurantOwner = () => {
+        return user && user.isRestaurant;
+    };
 
     const login = async (usernameOrEmail, password) => {
         try {
@@ -41,12 +57,12 @@ export const AuthProvider = ({ children }) => {
                 console.log('Account type:', userData.accountType);
                 console.log('Is Restaurant account:', userData.isRestaurant);
                 
-                return userData;
+                return { success: true };
             }
         } catch (err) {
             console.error('Login error:', err);
             setError(err.message || 'Login failed');
-            throw err;
+            return { success: false, error: err.message };
         }
     };
 
@@ -66,10 +82,10 @@ export const AuthProvider = ({ children }) => {
                 throw new Error(data.error || 'Signup failed');
             }
 
-            return data;
+            return { success: true };
         } catch (err) {
             setError(err.message);
-            throw err;
+            return { success: false, error: err.message };
         }
     };
 
@@ -89,7 +105,9 @@ export const AuthProvider = ({ children }) => {
         setAccountType,
         login,
         signup,
-        logout
+        logout,
+        isAuthenticated,
+        isRestaurantOwner
     };
 
     return (

@@ -11,6 +11,9 @@ import Map from './pages/Map';
 import RestaurantList from './components/RestaurantList';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import CreateRestaurant from './pages/CreateRestaurant';
+import ManageRestaurants from './pages/ManageRestaurants';
+import EditRestaurant from './pages/EditRestaurant';
 import './App.css';
 
 function App() {
@@ -32,6 +35,30 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/create-restaurant"
+                element={
+                  <ProtectedRoute requireRestaurantOwner>
+                    <CreateRestaurant />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/manage-restaurants"
+                element={
+                  <ProtectedRoute requireRestaurantOwner>
+                    <ManageRestaurants />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/edit-restaurant/:id"
+                element={
+                  <ProtectedRoute requireRestaurantOwner>
+                    <EditRestaurant />
                   </ProtectedRoute>
                 }
               />

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode = 'login' }) => {
+  const navigate = useNavigate();
   const [authMode, setAuthMode] = useState(initialAuthMode);
+  const { login, signup } = useAuth();
 
   // Update authMode when initialAuthMode changes
   useEffect(() => {
@@ -14,11 +17,11 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
     email: '',
     password: '',
     confirmPassword: '',
-    dateOfBirth: ''
+    dateOfBirth: '',
+    accountType: accountType
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, signup } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,23 +30,50 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
 
     try {
       if (authMode === 'login') {
-        await login(formData.username, formData.password);
+        const result = await login(formData.username, formData.password);
+        if (result.success) {
+          onClose();
+          // Redirect based on account type
+          if (accountType === 'restaurant') {
+            navigate('/manage-restaurants');
+          } else {
+            navigate('/');
+          }
+        } else {
+          setError(result.error || 'Login failed');
+        }
       } else {
         if (formData.password !== formData.confirmPassword) {
           setError('Passwords do not match');
+          setLoading(false);
           return;
         }
-        await signup({
+        const result = await signup({
           username: formData.username,
           email: formData.email,
           password: formData.password,
           dateOfBirth: formData.dateOfBirth,
           accountType: accountType
         });
+        if (result.success) {
+          // After successful signup, automatically log in
+          const loginResult = await login(formData.username, formData.password);
+          if (loginResult.success) {
+            onClose();
+            if (accountType === 'restaurant') {
+              navigate('/manage-restaurants');
+            } else {
+              navigate('/');
+            }
+          } else {
+            setError('Account created but login failed. Please try logging in.');
+          }
+        } else {
+          setError(result.error || 'Signup failed');
+        }
       }
-      onClose();
     } catch (err) {
-      setError(err.message || 'Authentication failed');
+      setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -174,7 +204,7 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
             {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button
               onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
-              className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+              className="text-orange-600 hover:text-orange-700 font-medium"
             >
               {authMode === 'login' ? 'Sign up' : 'Login'}
             </button>

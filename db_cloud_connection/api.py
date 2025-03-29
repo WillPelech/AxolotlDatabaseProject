@@ -315,9 +315,8 @@ def get_restaurant_foods():
 
 
 @app.route('/api/restaurants/<int:id>', methods=['GET'])
-def get_restaurant_by_id():
+def get_restaurant_by_id(id):
     try:
-        id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s", (id,))
@@ -333,9 +332,10 @@ def get_restaurant_by_id():
             })
         else:
             return jsonify({
-                "message": "Restaurant not found"
-            })
+                "error": "Restaurant not found"
+            }), 404
     except Exception as e:
+        print(f"Error fetching restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/restaurants', methods=['POST'])
@@ -345,55 +345,104 @@ def create_restaurant():
         cursor = connection.cursor(pymysql.cursors.DictCursor)
         data = request.json["restaurantData"]
         cursor.execute("SELECT MAX(RestaurantID) FROM Restaurant")
-        max_id = cursor.fetchone()[0]
+        max_id = cursor.fetchone()['MAX(RestaurantID)']
         next_id = 1 if max_id is None else max_id + 1
 
         cursor.execute("""
-                INSERT INTO Restaurant
+                INSERT INTO Restaurant (RestaurantID, RestaurantName, Category, Rating, PhoneNumber, Address, AccountID)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (next_id, data['name'], data['category'], data['rating'], data['phone_number'], data['address'], data['accountID']))
-        cursor.close()
+            """, (next_id, data['name'], data['category'], None, data['phoneNumber'], data['address'], data['accountID']))
+        
         connection.commit()
+        cursor.close()
         connection.close()
-        return jsonify({'message': 'Restaurant created successfully'}), 201
+        
+        return jsonify({
+            'message': 'Restaurant created successfully',
+            'restaurant': {
+                'RestaurantID': next_id,
+                'RestaurantName': data['name'],
+                'Category': data['category'],
+                'Rating': None,
+                'PhoneNumber': data['phoneNumber'],
+                'Address': data['address'],
+                'AccountID': data['accountID']
+            }
+        }), 201
     except Exception as e:
+        print(f"Error creating restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/restaurants/<int:id>', methods=['PUT'])
-def update_restaurant():
+def update_restaurant(id):
     try:
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
+        
+        # First check if restaurant exists
+        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s", (id,))
+        restaurant = cursor.fetchone()
+        
+        if not restaurant:
+            return jsonify({"error": "Restaurant not found"}), 404
+            
         data = request.json
         restaurantData = data["restaurantData"]
+        
+        # Update the restaurant
         cursor.execute("""
-                UPDATE Restaurant 
-                SET RestaurantName = %s, Category = %s, Rating = %s, PhoneNumber = %s, Address = %s
-                WHERE RestaurantID = %s
-            """, (restaurantData['RestaurantName'], restaurantData['Category'], restaurantData['Rating'],
-                       restaurantData['PhoneNumber'], restaurantData['Address'], data["id"]))
-        cursor.close()
+            UPDATE Restaurant 
+            SET RestaurantName = %s, Category = %s, PhoneNumber = %s, Address = %s
+            WHERE RestaurantID = %s
+        """, (
+            restaurantData['RestaurantName'],
+            restaurantData['Category'],
+            restaurantData['PhoneNumber'],
+            restaurantData['Address'],
+            id
+        ))
+        
         connection.commit()
+        cursor.close()
         connection.close()
-        return jsonify({'message': 'Restaurant updated successfully'})
+        
+        return jsonify({
+            "message": "Restaurant updated successfully",
+            "restaurant": {
+                "RestaurantID": id,
+                **restaurantData
+            }
+        })
     except Exception as e:
+        print(f"Error updating restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/restaurants/<int:id>', methods = ['DELETE'])
-def delete_restaurant():
+def delete_restaurant(id):
     try:
-        id = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
+        
+        # First check if restaurant exists
         cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s", (id,))
         restaurant = cursor.fetchone()
-        return_val = jsonify({
-            "message": f"Restaurant {id} deleted successfully",
-            "restaurant_info": restaurant
-        })
+        
+        if not restaurant:
+            return jsonify({"error": "Restaurant not found"}), 404
+            
+        # Delete the restaurant
         cursor.execute("DELETE FROM Restaurant WHERE RestaurantID = %s", (id,))
-        return return_val
+        connection.commit()
+        
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            "message": f"Restaurant {id} deleted successfully",
+            "restaurant": restaurant
+        })
     except Exception as e:
+        print(f"Error deleting restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
