@@ -485,7 +485,10 @@ def delete_restaurant(id):
         if not restaurant:
             return jsonify({"error": "Restaurant not found"}), 404
             
-        # Delete the restaurant
+        # First delete all associated food items
+        cursor.execute("DELETE FROM Food WHERE RestaurantID = %s", (id,))
+        
+        # Then delete the restaurant
         cursor.execute("DELETE FROM Restaurant WHERE RestaurantID = %s", (id,))
         connection.commit()
         
@@ -493,7 +496,7 @@ def delete_restaurant(id):
         connection.close()
         
         return jsonify({
-            "message": f"Restaurant {id} deleted successfully",
+            "message": f"Restaurant {id} and all associated food items deleted successfully",
             "restaurant": restaurant
         })
     except Exception as e:
