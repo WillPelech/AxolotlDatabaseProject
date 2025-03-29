@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from '../components/AuthModal';
 
 function Home() {
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
-  const { showAuthModal, setShowAuthModal, setAuthMode, setAccountType } = useAuth();
+  const { setAuthMode, setAccountType } = useAuth();
 
   const handleGetStarted = () => {
     setAccountType('restaurant');
@@ -61,7 +62,7 @@ function Home() {
               <p className="text-gray-600 mb-4">Manage your restaurant and reach more customers</p>
               <button
                 onClick={handleGetStarted}
-                className="w-full flex items-center justify-center px-8 py-3 border-2 border-orange-600 text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 md:py-4 md:text-lg md:px-10 transition-colors"
+                className="inline-block bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
               >
                 Get Started
               </button>
@@ -94,7 +95,12 @@ function Home() {
         </div>
       </div>
 
-      <AuthModal />
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+        accountType="restaurant"
+        initialAuthMode="signup"
+      />
     </div>
   );
 }

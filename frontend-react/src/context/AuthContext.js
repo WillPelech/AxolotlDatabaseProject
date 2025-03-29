@@ -9,7 +9,7 @@ export const AuthProvider = ({ children }) => {
     const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
     const [accountType, setAccountType] = useState('customer'); // 'customer' or 'restaurant'
 
-    const login = async (username, password) => {
+    const login = async (usernameOrEmail, password) => {
         try {
             setError(null);
             const response = await fetch('http://localhost:5000/api/auth/login', {
@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    username,
+                    username: usernameOrEmail,
                     password
                 })
             });
@@ -50,20 +50,14 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const signup = async (username, email, password, dateOfBirth) => {
+    const signup = async (signupData) => {
         try {
             const response = await fetch('http://localhost:5000/api/auth/signup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    username,
-                    email,
-                    password,
-                    dateOfBirth,
-                    accountType: accountType
-                })
+                body: JSON.stringify(signupData)
             });
 
             const data = await response.json();
@@ -72,8 +66,6 @@ export const AuthProvider = ({ children }) => {
                 throw new Error(data.error || 'Signup failed');
             }
 
-            setUser(data.user);
-            setError(null);
             return data;
         } catch (err) {
             setError(err.message);
@@ -83,7 +75,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         setUser(null);
-        setError(null);
+        localStorage.removeItem('user');
     };
 
     const value = {

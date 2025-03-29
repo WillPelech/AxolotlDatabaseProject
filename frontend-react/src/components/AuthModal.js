@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-function AuthModal() {
-  const { showAuthModal, setShowAuthModal, authMode, setAuthMode, accountType, setAccountType, login, signup, error } = useAuth();
+const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode = 'login' }) => {
+  const [authMode, setAuthMode] = useState(initialAuthMode);
+
+  // Update authMode when initialAuthMode changes
+  useEffect(() => {
+    setAuthMode(initialAuthMode);
+  }, [initialAuthMode]);
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -10,10 +16,13 @@ function AuthModal() {
     confirmPassword: '',
     dateOfBirth: ''
   });
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { login, signup } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
 
     try {
@@ -21,18 +30,20 @@ function AuthModal() {
         await login(formData.username, formData.password);
       } else {
         if (formData.password !== formData.confirmPassword) {
-          throw new Error("Passwords don't match!");
+          setError('Passwords do not match');
+          return;
         }
-        await signup(
-          formData.username,
-          formData.email,
-          formData.password,
-          formData.dateOfBirth
-        );
+        await signup({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          dateOfBirth: formData.dateOfBirth,
+          accountType: accountType
+        });
       }
-      setShowAuthModal(false);
+      onClose();
     } catch (err) {
-      console.error(`${authMode} failed:`, err);
+      setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -45,139 +56,133 @@ function AuthModal() {
     });
   };
 
-  if (!showAuthModal) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 max-w-md w-full">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Create Restaurant Account</h2>
+          <h2 className="text-2xl font-bold">
+            {authMode === 'login' ? 'Login' : `Create ${accountType === 'restaurant' ? 'Restaurant' : 'Customer'} Account`}
+          </h2>
           <button
-            onClick={() => setShowAuthModal(false)}
+            onClick={onClose}
             className="bg-orange-600 text-white border-2 border-orange-600 px-3 py-1 rounded-md hover:bg-orange-700 transition-colors"
           >
             X
           </button>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-            {error}
-          </div>
-        )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {authMode === 'login' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Username or Email</label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                />
+              </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-              Username
-            </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                />
+              </div>
+            </>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Password</label>
             <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
+              type="password"
+              name="password"
+              value={formData.password}
               onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               required
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
             />
           </div>
 
           {authMode === 'signup' && (
             <>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                  Email
-                </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
                 <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
                 />
               </div>
 
               {accountType === 'customer' && (
-                <div className="mb-4">
-                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="dateOfBirth">
-                    Date of Birth
-                  </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
                   <input
                     type="date"
-                    id="dateOfBirth"
                     name="dateOfBirth"
                     value={formData.dateOfBirth}
                     onChange={handleChange}
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
                   />
                 </div>
               )}
             </>
           )}
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              required
-            />
-          </div>
-
-          {authMode === 'signup' && (
-            <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirmPassword">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                required
-              />
-            </div>
+          {error && (
+            <div className="text-red-600 text-sm">{error}</div>
           )}
 
-          <div className="flex items-center justify-between">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-orange-600 text-white border-2 border-orange-600 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline hover:bg-orange-700 transition-colors"
-            >
-              {loading ? 'Processing...' : authMode === 'login' ? 'Login' : 'Create Account'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+          >
+            {loading ? 'Processing...' : authMode === 'login' ? 'Login' : 'Create Account'}
+          </button>
         </form>
 
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-600">
-            Already have an account?{' '}
+            {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button
-              onClick={() => {
-                setAuthMode('login');
-                setAccountType('restaurant');
-              }}
+              onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
               className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
             >
-              Login
+              {authMode === 'login' ? 'Sign up' : 'Login'}
             </button>
           </p>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default AuthModal; 

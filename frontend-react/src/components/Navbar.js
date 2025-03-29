@@ -1,18 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AuthModal from './AuthModal';
 
 function Navbar() {
     const navigate = useNavigate();
-    const { user, logout, setShowAuthModal, setAuthMode } = useAuth();
-
-    const handleLogin = () => {
-        navigate('/login');
-    };
-
-    const handleSignup = () => {
-        navigate('/signup');
-    };
+    const { user, logout } = useAuth();
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [modalMode, setModalMode] = useState('login');
 
     const handleLogout = () => {
         logout();
@@ -45,13 +40,19 @@ function Navbar() {
                         ) : (
                             <div className="flex items-center space-x-4">
                                 <button
-                                    onClick={handleLogin}
+                                    onClick={() => {
+                                        setModalMode('login');
+                                        setShowAuthModal(true);
+                                    }}
                                     className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Login
                                 </button>
                                 <button
-                                    onClick={handleSignup}
+                                    onClick={() => {
+                                        setModalMode('signup');
+                                        setShowAuthModal(true);
+                                    }}
                                     className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Sign Up
@@ -61,6 +62,12 @@ function Navbar() {
                     </div>
                 </div>
             </div>
+            <AuthModal 
+                isOpen={showAuthModal} 
+                onClose={() => setShowAuthModal(false)} 
+                accountType="customer"
+                initialAuthMode={modalMode}
+            />
         </nav>
     );
 }
