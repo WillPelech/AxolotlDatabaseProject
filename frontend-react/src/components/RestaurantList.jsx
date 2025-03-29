@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { restaurantApi } from '../services/api';
+import { Link } from 'react-router-dom';
 
 function RestaurantList() {
     const [restaurants, setRestaurants] = useState([]);
+    const [menuItems, setMenuItems] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [editingRestaurant, setEditingRestaurant] = useState(null);
-    const [newRestaurant, setNewRestaurant] = useState({
-        name: '',
-        address: '',
-        cuisine: ''
-    });
 
-    // Load restaurants
     useEffect(() => {
         loadRestaurants();
     }, []);
@@ -20,8 +14,31 @@ function RestaurantList() {
     const loadRestaurants = async () => {
         try {
             setLoading(true);
-            const data = await restaurantApi.getAll();
-            setRestaurants(data || []); // Ensure we always have an array
+            const response = await fetch('http://localhost:5000/api/restaurants');
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch restaurants');
+            }
+
+            setRestaurants(data.restaurants || []);
+
+            // Fetch menu items for each restaurant
+            const menuPromises = data.restaurants.map(restaurant =>
+                fetch(`http://localhost:5000/api/restaurants/${restaurant.RestaurantID}/foods`)
+                    .then(res => res.json())
+                    .then(menuData => ({
+                        restaurantId: restaurant.RestaurantID,
+                        foods: menuData.foodlist || []
+                    }))
+            );
+
+            const menuResults = await Promise.all(menuPromises);
+            const menuMap = {};
+            menuResults.forEach(result => {
+                menuMap[result.restaurantId] = result.foods;
+            });
+            setMenuItems(menuMap);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -29,176 +46,71 @@ function RestaurantList() {
         }
     };
 
-    // Add restaurant
-    const handleAdd = async (e) => {
-        e.preventDefault();
-        try {
-            await restaurantApi.create(newRestaurant);
-            setNewRestaurant({ name: '', address: '', cuisine: '' });
-            loadRestaurants();
-        } catch (err) {
-            setError(err.message);
-        }
-    };
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="text-xl text-gray-600">Loading restaurants...</div>
+        </div>
+    );
 
-    // Start editing a restaurant
-    const handleStartEdit = (restaurant) => {
-        setEditingRestaurant({
-            id: restaurant.id,
-            name: restaurant.name || '',
-            address: restaurant.address || '',
-            cuisine: restaurant.cuisine || ''
-        });
-    };
-
-    // Update restaurant
-    const handleUpdate = async (e) => {
-        e.preventDefault();
-        if (!editingRestaurant?.id) return;
-        
-        try {
-            await restaurantApi.update(editingRestaurant.id, editingRestaurant);
-            setEditingRestaurant(null);
-            loadRestaurants();
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
-    // Delete restaurant
-    const handleDelete = async (id) => {
-        if (!id) return;
-        
-        if (window.confirm('Are you sure you want to delete this restaurant?')) {
-            try {
-                await restaurantApi.delete(id);
-                loadRestaurants();
-            } catch (err) {
-                setError(err.message);
-            }
-        }
-    };
-
-    if (loading) return <div className="text-center p-4">Loading...</div>;
-    if (error) return <div className="text-red-500 text-center p-4">Error: {error}</div>;
+    if (error) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="text-xl text-red-600">{error}</div>
+        </div>
+    );
 
     return (
-        <div className="max-w-7xl mx-auto p-4">
-            <h2 className="text-2xl font-bold mb-6">Restaurants</h2>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8">Find Restaurants</h2>
             
-            {/* Add Restaurant Form */}
-            <form onSubmit={handleAdd} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-                <h3 className="text-xl font-semibold mb-4">Add New Restaurant</h3>
-                <div className="grid grid-cols-1 gap-4">
-                    <input
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                        type="text"
-                        placeholder="Restaurant Name"
-                        value={newRestaurant.name}
-                        onChange={(e) => setNewRestaurant({...newRestaurant, name: e.target.value})}
-                        required
-                    />
-                    <input
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                        type="text"
-                        placeholder="Address"
-                        value={newRestaurant.address}
-                        onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
-                        required
-                    />
-                    <input
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                        type="text"
-                        placeholder="Cuisine"
-                        value={newRestaurant.cuisine}
-                        onChange={(e) => setNewRestaurant({...newRestaurant, cuisine: e.target.value})}
-                        required
-                    />
-                    <button 
-                        type="submit"
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                    >
-                        Add Restaurant
-                    </button>
-                </div>
-            </form>
-
-            {/* Restaurant List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {restaurants.map(restaurant => (
-                    <div key={restaurant.id} className="bg-white shadow-md rounded-lg p-6">
-                        {editingRestaurant && editingRestaurant.id === restaurant.id ? (
-                            // Edit Form
-                            <form onSubmit={handleUpdate} className="space-y-4">
-                                <input
-                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                                    type="text"
-                                    value={editingRestaurant.name || ''}
-                                    onChange={(e) => setEditingRestaurant({
-                                        ...editingRestaurant,
-                                        name: e.target.value
-                                    })}
-                                    required
+                    <Link 
+                        key={restaurant.RestaurantID} 
+                        to={`/restaurant/${restaurant.RestaurantID}`}
+                        className="block"
+                    >
+                        <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                            <div className="relative h-48">
+                                <img
+                                    src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4"
+                                    alt={restaurant.RestaurantName}
+                                    className="w-full h-full object-cover"
                                 />
-                                <input
-                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                                    type="text"
-                                    value={editingRestaurant.address || ''}
-                                    onChange={(e) => setEditingRestaurant({
-                                        ...editingRestaurant,
-                                        address: e.target.value
-                                    })}
-                                    required
-                                />
-                                <input
-                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
-                                    type="text"
-                                    value={editingRestaurant.cuisine || ''}
-                                    onChange={(e) => setEditingRestaurant({
-                                        ...editingRestaurant,
-                                        cuisine: e.target.value
-                                    })}
-                                    required
-                                />
-                                <div className="flex gap-2">
-                                    <button 
-                                        type="submit"
-                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-                                    >
-                                        Save
-                                    </button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => setEditingRestaurant(null)}
-                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-                                    >
-                                        Cancel
-                                    </button>
+                                <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+                                <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                                    <h3 className="text-xl font-bold">{restaurant.RestaurantName}</h3>
+                                    <p className="text-sm">{restaurant.Category}</p>
                                 </div>
-                            </form>
-                        ) : (
-                            // Display Mode
-                            <>
-                                <h3 className="text-xl font-semibold mb-2">{restaurant.name}</h3>
-                                <p className="text-gray-600 mb-1">{restaurant.address}</p>
-                                <p className="text-gray-600 mb-4">{restaurant.cuisine}</p>
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => handleStartEdit(restaurant)}
-                                        className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-                                    >
-                                        Edit
-                                    </button>
-                                    <button 
-                                        onClick={() => handleDelete(restaurant.id)}
-                                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                                    >
-                                        Delete
-                                    </button>
+                            </div>
+                            <div className="p-4">
+                                <div className="mb-4">
+                                    <p className="text-gray-600">{restaurant.Address}</p>
+                                    <p className="text-gray-600">Phone: {restaurant.PhoneNumber}</p>
                                 </div>
-                            </>
-                        )}
-                    </div>
+                                
+                                <div className="border-t pt-4">
+                                    <h4 className="font-semibold text-gray-900 mb-2">Menu Preview</h4>
+                                    {menuItems[restaurant.RestaurantID]?.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {menuItems[restaurant.RestaurantID].slice(0, 3).map(item => (
+                                                <div key={item.FoodID} className="flex justify-between text-sm">
+                                                    <span className="text-gray-700">{item.FoodName}</span>
+                                                    <span className="text-gray-600">${item.Price}</span>
+                                                </div>
+                                            ))}
+                                            {menuItems[restaurant.RestaurantID].length > 3 && (
+                                                <p className="text-sm text-gray-500 italic">
+                                                    +{menuItems[restaurant.RestaurantID].length - 3} more items...
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-500">No menu items available</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </Link>
                 ))}
             </div>
         </div>
