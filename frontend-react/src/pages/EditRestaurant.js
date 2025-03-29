@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import CreateFoodModal from '../components/CreateFoodModal';
 
 function EditRestaurant() {
   const navigate = useNavigate();
@@ -14,9 +15,12 @@ function EditRestaurant() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showFoodModal, setShowFoodModal] = useState(false);
+  const [foods, setFoods] = useState([]);
 
   useEffect(() => {
     fetchRestaurantDetails();
+    fetchFoods();
   }, [id]);
 
   const fetchRestaurantDetails = async () => {
@@ -47,6 +51,25 @@ function EditRestaurant() {
     }
   };
 
+  const fetchFoods = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/restaurants/${id}/foods`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFoods(data.foodlist || []);
+      }
+    } catch (err) {
+      console.error('Error fetching foods:', err);
+    }
+  };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -68,7 +91,7 @@ function EditRestaurant() {
           id: parseInt(id),
           restaurantData: {
             ...formData,
-            Rating: null // Keep the existing rating
+            Rating: null
           }
         }),
       });
@@ -85,6 +108,10 @@ function EditRestaurant() {
     } catch (err) {
       setError('Error connecting to the server');
     }
+  };
+
+  const handleFoodCreated = (newFood) => {
+    setFoods([...foods, newFood]);
   };
 
   if (!user || !user.isRestaurant) {
@@ -112,99 +139,135 @@ function EditRestaurant() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-        <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
-          Edit Restaurant
-        </h2>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
+          <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
+            Edit Restaurant
+          </h2>
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="RestaurantName" className="block text-sm font-medium text-gray-700">
-              Restaurant Name
-            </label>
-            <input
-              type="text"
-              id="RestaurantName"
-              name="RestaurantName"
-              required
-              value={formData.RestaurantName}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-              placeholder="Enter restaurant name"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="RestaurantName" className="block text-sm font-medium text-gray-700">
+                Restaurant Name
+              </label>
+              <input
+                type="text"
+                id="RestaurantName"
+                name="RestaurantName"
+                required
+                value={formData.RestaurantName}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter restaurant name"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="Category" className="block text-sm font-medium text-gray-700">
-              Category
-            </label>
-            <input
-              type="text"
-              id="Category"
-              name="Category"
-              required
-              value={formData.Category}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-              placeholder="e.g., Italian, Chinese, Fast Food"
-            />
-          </div>
+            <div>
+              <label htmlFor="Category" className="block text-sm font-medium text-gray-700">
+                Category
+              </label>
+              <input
+                type="text"
+                id="Category"
+                name="Category"
+                required
+                value={formData.Category}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="e.g., Italian, Chinese, Fast Food"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="PhoneNumber" className="block text-sm font-medium text-gray-700">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              id="PhoneNumber"
-              name="PhoneNumber"
-              required
-              value={formData.PhoneNumber}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-              placeholder="Enter phone number"
-            />
-          </div>
+            <div>
+              <label htmlFor="PhoneNumber" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                id="PhoneNumber"
+                name="PhoneNumber"
+                required
+                value={formData.PhoneNumber}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter phone number"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="Address" className="block text-sm font-medium text-gray-700">
-              Address
-            </label>
-            <textarea
-              id="Address"
-              name="Address"
-              required
-              value={formData.Address}
-              onChange={handleChange}
-              rows="3"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-              placeholder="Enter full address"
-            />
-          </div>
+            <div>
+              <label htmlFor="Address" className="block text-sm font-medium text-gray-700">
+                Address
+              </label>
+              <textarea
+                id="Address"
+                name="Address"
+                required
+                value={formData.Address}
+                onChange={handleChange}
+                rows="3"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter full address"
+              />
+            </div>
 
-          <div className="flex justify-end space-x-4">
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate('/manage-restaurants')}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Food Section */}
+        <div className="max-w-md mx-auto mt-8 bg-white rounded-lg shadow-md p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-gray-900">Menu Items</h3>
             <button
-              type="button"
-              onClick={() => navigate('/manage-restaurants')}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              onClick={() => setShowFoodModal(true)}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-            >
-              Save Changes
+              Create Food
             </button>
           </div>
-        </form>
+
+          <div className="space-y-4">
+            {foods.map((food, index) => (
+              <div key={index} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium">{food.FoodName}</h4>
+                  <p className="text-gray-600">${food.Price}</p>
+                </div>
+              </div>
+            ))}
+            {foods.length === 0 && (
+              <p className="text-gray-500 text-center">No menu items yet</p>
+            )}
+          </div>
+        </div>
       </div>
+
+      <CreateFoodModal
+        isOpen={showFoodModal}
+        onClose={() => setShowFoodModal(false)}
+        restaurantId={id}
+        onFoodCreated={handleFoodCreated}
+      />
     </div>
   );
 }

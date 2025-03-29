@@ -32,20 +32,15 @@ function Suggested() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-          const data = await restaurantApi.getAll();
-          console.log(data)
-          setRestaurants(data);
-          // console.log(data.restaurants[0])
-          console.log("Updated Restaurants (before state re-renders):", restaurants);
+        const data = await restaurantApi.getAll();
+        setRestaurants(data);
       } catch (err) {
-          setError(err.message);
+        setError(err.message);
       }
-      };
+    };
 
-      fetchData();
-      console.log(restaurants.restaurants);
-  });
-
+    fetchData();
+  }, [selectedCuisine, priceRange]); // Only re-fetch when filters change
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

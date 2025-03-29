@@ -290,29 +290,84 @@ def get_all_restaurants():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-@app.route('/api/restaurants/<int:id>/foods', methods=['GET'])
-def get_restaurant_foods():
+@app.route('/api/restaurants/<int:restaurant_id>/foods', methods=['GET'])
+def get_restaurant_foods(restaurant_id):
     try:
-        restID = request.json["id"]
         connection = get_db_connection()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-
-        cursor.execute("SELECT FoodName FROM Food WHERE RestaurantID = %s", restID)
+        cursor.execute("""
+            SELECT FoodID, FoodName, Price
+            FROM Food
+            WHERE RestaurantID = %s
+        """, (restaurant_id,))
+        
         foodlist = cursor.fetchall()
-
         cursor.close()
         connection.close()
-        if (foodlist):
-            return jsonify({
-                "foodlist": foodlist
-            })
-        else:
-            return jsonify({
-                "message":"restaurant has no foods"
-            })
+        
+        print(f"Retrieved {len(foodlist)} foods for restaurant {restaurant_id}")  # Add logging
+        
+        return jsonify({
+            'success': True,
+            'foodlist': foodlist
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error fetching foods: {str(e)}")  # Add logging
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
+@app.route('/api/restaurants/<int:restaurant_id>/foods', methods=['POST'])
+def create_food(restaurant_id):
+    try:
+        data = request.get_json()
+        food_name = data.get('FoodName')
+        price = data.get('Price')
+
+        if not food_name or not price:
+            return jsonify({
+                'success': False,
+                'error': 'Food name and price are required'
+            }), 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        
+        # Get the next FoodID
+        cursor.execute("SELECT MAX(FoodID) FROM Food")
+        result = cursor.fetchone()
+        next_food_id = 1 if result['MAX(FoodID)'] is None else result['MAX(FoodID)'] + 1
+
+        # Insert the new food item
+        cursor.execute("""
+            INSERT INTO Food (FoodID, FoodName, Price, RestaurantID)
+            VALUES (%s, %s, %s, %s)
+        """, (next_food_id, food_name, price, restaurant_id))
+        
+        connection.commit()
+        
+        # Return the created food item
+        new_food = {
+            'FoodID': next_food_id,
+            'FoodName': food_name,
+            'Price': price,
+            'RestaurantID': restaurant_id
+        }
+        
+        cursor.close()
+        connection.close()
+        
+        return jsonify({
+            'success': True,
+            'food': new_food
+        })
+    except Exception as e:
+        print(f"Error creating food: {str(e)}")  # Add logging
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/restaurants/<int:id>', methods=['GET'])
 def get_restaurant_by_id(id):
