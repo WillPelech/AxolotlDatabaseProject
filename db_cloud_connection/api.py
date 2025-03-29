@@ -369,6 +369,29 @@ def delete_restaurant():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/customers/<int:id>/restaurants', methods=['GET'])
+def get_reviewed_restaurants(id):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("""
+                        SELECT DISTINCT r.RestaurantID, r.Category, r.Rating, r.PhoneNumber, r.Address, r.RestaurantName
+                        FROM Restaurant r
+                        JOIN Review rev 
+                        ON r.RestaurantID = rev.RestaurantID
+                        WHERE rev.CustomerID = %s""", (id,))
+        restaurants = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        return jsonify({
+            "restaurants": restaurants
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
