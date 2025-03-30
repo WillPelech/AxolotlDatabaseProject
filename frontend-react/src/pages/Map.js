@@ -1,19 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { restaurantApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 function Map() {
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [error, setError] = useState(null);
-
+  const [reviewRestaurants, setReviewRestaurants] = useState([]);
+  const { user } = useAuth();
   useEffect(() => {
     // Initialize Google Maps
+    const fetchReviewedRestaurants = async () => {
+      try{
+        console.log(user.accountId)
+        const data = await restaurantApi.getReviewedRestaurants(user.accountId);
+        setReviewRestaurants(data.restaurants);
+        console.log(data.restaurants)
+      } catch (err) {
+        setError(err.message);
+      };
+      console.log(reviewRestaurants);
+    }
+    fetchReviewedRestaurants();
     const initMap = () => {
       try {
         const mapOptions = {
           center: { lat: 40.7128, lng: -74.0060 }, // New York City coordinates
           zoom: 13,
         };
-
         const mapElement = document.getElementById('map');
         const newMap = new window.google.maps.Map(mapElement, mapOptions);
         setMap(newMap);
@@ -101,7 +115,7 @@ function Map() {
     };
   }, []);
 
-  let restaurants = []; // will get list of restaurant objects using sql db
+   // will get list of restaurant objects using sql db
 
   if (error) {
     return (
@@ -123,38 +137,14 @@ function Map() {
           <h2 className="text-xl font-bold mb-4">NYC Restaurants</h2>
           <div className="space-y-4">
             {/* Restaurant List */}
-            {/* {restaurants.map((restaurant) =>(
+            {reviewRestaurants.map(restaurant =>(
               <div className="border-b pb-4">
-              <h3 className="font-semibold">{restaurant.getname}</h3>
-              <p className="text-sm text-gray-600">Rating: {restaurant.getrating} ★</p>
-              <p className="text-sm text-gray-600">Price: {restaurant.getprice}</p>
-              <p className="text-sm text-gray-500">Location: {restaurant.getaddress}/</p>
-            </div>
-            ))} */}
-            <div className="border-b pb-4">
-              <h3 className="font-semibold">Times Square Bistro</h3>
-              <p className="text-sm text-gray-600">Rating: 4.5 ★</p>
+              <h3 className="font-semibold">{restaurant.RestaurantName}</h3>
+              <p className="text-sm text-gray-600">Rating: {restaurant.Rating} ★</p>
               <p className="text-sm text-gray-600">Price: $$$</p>
-              <p className="text-sm text-gray-500">Location: Times Square</p>
+              <p className="text-sm text-gray-500">Location: {restaurant.Address}/</p>
             </div>
-            <div className="border-b pb-4">
-              <h3 className="font-semibold">Grand Central Deli</h3>
-              <p className="text-sm text-gray-600">Rating: 4.2 ★</p>
-              <p className="text-sm text-gray-600">Price: $$</p>
-              <p className="text-sm text-gray-500">Location: Grand Central</p>
-            </div>
-            <div className="border-b pb-4">
-              <h3 className="font-semibold">Rockefeller Cafe</h3>
-              <p className="text-sm text-gray-600">Rating: 4.7 ★</p>
-              <p className="text-sm text-gray-600">Price: $$$</p>
-              <p className="text-sm text-gray-500">Location: Rockefeller Center</p>
-            </div>
-            <div className="border-b pb-4">
-              <h3 className="font-semibold">Empire State Restaurant</h3>
-              <p className="text-sm text-gray-600">Rating: 4.3 ★</p>
-              <p className="text-sm text-gray-600">Price: $$$</p>
-              <p className="text-sm text-gray-500">Location: Empire State Building</p>
-            </div>
+            ))}
           </div>
         </div>
       </div>

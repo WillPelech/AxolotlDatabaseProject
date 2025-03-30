@@ -1,15 +1,15 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProtectedRoute = ({ children, requireRestaurantOwner = false }) => {
-    const { isAuthenticated, isRestaurantOwner } = useAuth();
+    const { user } = useAuth();
 
-    if (!isAuthenticated) {
+    if (!user) {
         return <Navigate to="/login" />;
     }
 
-    if (requireRestaurantOwner && !isRestaurantOwner()) {
+    if (requireRestaurantOwner && !user.isRestaurant) {
         return <Navigate to="/" />;
     }
 
