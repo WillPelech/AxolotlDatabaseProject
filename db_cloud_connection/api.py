@@ -28,6 +28,8 @@ SERVICE_ACCOUNT_KEY = os.getenv('SERVICE_ACCOUNT_KEY')
 # Load credentials
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_KEY)
 
+#Create an instance of Connector(google cloud connector) to create a connection between the gcloud db
+#This will be used as a cursor to run SQL on the DB from Flask API endpoints
 def get_db_connection():
     connector = Connector(credentials=credentials)
     connection = connector.connect(
@@ -392,10 +394,64 @@ def delete_restaurant():
             "restaurant_info": restaurant
         })
         cursor.execute("DELETE FROM Restaurant WHERE RestaurantID = %s",(id))
+        cursor.close()
+        connection.commit()
+        connection.close()
         return return_val
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/messages', methods = ['GET'])
+def get_messages():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM Messages")
+        messages = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return jsonify({
+            "messages":messages 
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/messages', methods=['POST'])
+def create_message():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        data = request.json["messageData"]
+        cursor.execute("SELECT MAX(MessageID) FROM Messages")
+        max_id = cursor.fetchone()[0]
+        next_id = 1 if max_id is None else max_id + 1
 
+        cursor.execute("""
+                INSERT INTO Messages
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (next_id, data['senderID'], data['recipientID'], data['timestamp'], data['contents']))
+        cursor.close()
+        connection.commit()
+        connection.close()
+        return jsonify({'message': 'Message created successfully'}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/messages/<int:id>', methods = ['GET'])
+def get_messages_by_id():
+    try:
+        id = request.json["id"]
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT * FROM Messages WHERE MessageID = %s",(id))
+        message = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        return jsonify({
+            "message":message 
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
