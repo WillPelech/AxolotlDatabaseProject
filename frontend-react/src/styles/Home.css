@@ -1,0 +1,112 @@
+.home-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: calc(100vh - 64px); /* Subtract navbar height */
+  background-color: #f9fafb;
+}
+
+.welcome-section {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding: 2rem 0;
+}
+
+.welcome-section h1 {
+  font-size: 3rem;
+  color: #f97316;
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+.welcome-section p {
+  font-size: 1.2rem;
+  color: #4b5563;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.featured-restaurants {
+  margin-top: 2rem;
+}
+
+.featured-restaurants h2 {
+  font-size: 2rem;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.restaurant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
+  padding: 1rem;
+}
+
+.restaurant-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease-in-out;
+}
+
+.restaurant-card:hover {
+  transform: translateY(-5px);
+}
+
+.restaurant-card h3 {
+  font-size: 1.25rem;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+}
+
+.restaurant-card p {
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.view-button {
+  display: inline-block;
+  background-color: #f97316;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  text-decoration: none;
+  margin-top: 1rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.view-button:hover {
+  background-color: #ea580c;
+}
+
+.loading {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #4b5563;
+  padding: 2rem;
+}
+
+.error {
+  text-align: center;
+  color: #ef4444;
+  padding: 2rem;
+  font-size: 1.2rem;
+  background-color: #fee2e2;
+  border-radius: 8px;
+  margin: 1rem auto;
+  max-width: 600px;
+}
+
+.no-restaurants {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  color: #4b5563;
+  background-color: #f3f4f6;
+  border-radius: 8px;
+  margin: 1rem auto;
+  max-width: 600px;
+} 

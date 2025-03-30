@@ -1,24 +1,69 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import '../styles/Home.css';
 
-function Home() {
+const Home = () => {
+  const { user } = useAuth();
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchFrontPageRestaurants = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/restaurants/front-page');
+        if (!response.ok) {
+          throw new Error('Failed to fetch restaurants');
+        }
+        const data = await response.json();
+        setRestaurants(data.restaurants || []);
+      } catch (err) {
+        console.error('Error fetching restaurants:', err);
+        setError('Failed to load featured restaurants');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFrontPageRestaurants();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-white flex justify-center">
-      <div className="w-[1024px] px-4 py-12">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-orange-600 mb-4">
-            FoodHub
-          </h1>
-          <p className="text-2xl text-gray-600 mb-8">
-            Your Ultimate Food Discovery Platform
-          </p>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Discover amazing restaurants, explore local cuisines, and find your next favorite meal.
-            Whether you're a foodie or a restaurant owner, FoodHub has something for everyone.
-          </p>
-        </div>
+    <div className="home-container">
+      <div className="welcome-section">
+        <h1>Welcome to FoodHub</h1>
+        <p>Discover the best restaurants in your area</p>
       </div>
+
+      {loading ? (
+        <div className="loading">Loading featured restaurants...</div>
+      ) : error ? (
+        <div className="error">{error}</div>
+      ) : restaurants.length === 0 ? (
+        <div className="no-restaurants">
+          <p>No featured restaurants available at the moment.</p>
+        </div>
+      ) : (
+        <div className="featured-restaurants">
+          <h2>Featured Restaurants</h2>
+          <div className="restaurant-grid">
+            {restaurants.map((restaurant) => (
+              <div key={restaurant.RestaurantID} className="restaurant-card">
+                <h3>{restaurant.RestaurantName}</h3>
+                <p>Category: {restaurant.Category}</p>
+                <p>Rating: {restaurant.Rating || 'No ratings yet'}</p>
+                <p>Push Points: {restaurant.PushPoints}</p>
+                <Link to={`/restaurant/${restaurant.RestaurantID}`} className="view-button">
+                  View Details
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default Home; 

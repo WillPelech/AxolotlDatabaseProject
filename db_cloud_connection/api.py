@@ -526,6 +526,30 @@ def get_reviewed_restaurants(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/restaurants/front-page', methods=['GET'])
+def get_front_page_restaurants():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+
+        # Get restaurants from Front_Page table ordered by date (most recent) and push points (highest)
+        cursor.execute("""
+            SELECT r.*, fp.PushPoints, fp.Date
+            FROM Restaurant r
+            JOIN Front_Page fp ON r.RestaurantID = fp.RestaurantID
+            ORDER BY fp.Date DESC, fp.PushPoints DESC
+        """)
+        restaurants = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        return jsonify({
+            "restaurants": restaurants
+        })
+    except Exception as e:
+        print(f"Error fetching front page restaurants: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
