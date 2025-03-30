@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 function ManageRestaurants() {
   const navigate = useNavigate();
@@ -80,7 +80,7 @@ function ManageRestaurants() {
           <h1 className="text-3xl font-bold text-gray-900">Manage Your Restaurants</h1>
           <button
             onClick={() => navigate('/create-restaurant')}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700"
+            className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
           >
             Create New Restaurant
           </button>
@@ -117,13 +117,13 @@ function ManageRestaurants() {
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => navigate(`/edit-restaurant/${restaurant.RestaurantID}`)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(restaurant.RestaurantID)}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
                 >
                   Delete
                 </button>

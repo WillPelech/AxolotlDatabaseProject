@@ -10,13 +10,13 @@ function RestaurantCard({ restaurant, onDelete }) {
       <div className="flex gap-2">
         <Link
           to={`/restaurant/${restaurant.id}`}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          className="bg-orange-600 text-white hover:bg-orange-700 font-medium py-2 px-4 rounded transition-colors"
         >
           View Details
         </Link>
         <button
           onClick={() => onDelete(restaurant.id)}
-          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          className="bg-red-600 text-white hover:bg-red-700 font-medium py-2 px-4 rounded transition-colors"
         >
           Delete
         </button>

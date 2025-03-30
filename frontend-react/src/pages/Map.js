@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { restaurantApi } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 function Map() {
   const [map, setMap] = useState(null);

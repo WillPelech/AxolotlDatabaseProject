@@ -75,7 +75,7 @@ function Navbar() {
                                 </span>
                                 <button
                                     onClick={handleLogout}
-                                    className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Logout
                                 </button>
@@ -84,19 +84,19 @@ function Navbar() {
                             <div className="flex items-center space-x-4">
                                 <button
                                     onClick={() => handleAuthClick('signup', 'restaurant')}
-                                    className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Create Restaurant Account
                                 </button>
                                 <button
                                     onClick={() => handleAuthClick('login')}
-                                    className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Login
                                 </button>
                                 <button
                                     onClick={() => handleAuthClick('signup')}
-                                    className="bg-orange-600 text-white border-2 border-orange-600 px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
                                 >
                                     Sign Up
                                 </button>
