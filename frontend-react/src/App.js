@@ -14,6 +14,7 @@ import Signup from './pages/Signup';
 import CreateRestaurant from './pages/CreateRestaurant';
 import ManageRestaurants from './pages/ManageRestaurants';
 import EditRestaurant from './pages/EditRestaurant';
+import Orders from './pages/Orders';
 import './App.css';
 
 function App() {
@@ -67,6 +68,14 @@ function App() {
                 element={
                   <ProtectedRoute requireRestaurantOwner>
                     <RestaurantList />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/orders"
+                element={
+                  <ProtectedRoute>
+                    <Orders />
                   </ProtectedRoute>
                 }
               />

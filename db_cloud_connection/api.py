@@ -606,5 +606,130 @@ def get_front_page_restaurants():
         print(f"Error fetching front page restaurants: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/orders', methods=['POST'])
+def create_order():
+    try:
+        data = request.json
+        print("Received order data:", data)  # Debug log
+        
+        customer_id = data.get('CustomerID')
+        restaurant_id = data.get('RestaurantID')
+        items = data.get('items', [])
+        additional_costs = data.get('Additional_Costs', 0)  # Default to 0 if not provided
+        price_total = data.get('PriceTotal')
+
+        if not all([customer_id, restaurant_id, items, price_total]):
+            missing_fields = [field for field, value in {
+                'CustomerID': customer_id,
+                'RestaurantID': restaurant_id,
+                'items': items,
+                'PriceTotal': price_total
+            }.items() if not value]
+            return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Get the next OrderID
+            cursor.execute("SELECT MAX(OrderID) FROM Orders")
+            result = cursor.fetchone()
+            next_order_id = 1 if result[0] is None else result[0] + 1
+
+            # Create the order entry with Additional_Costs
+            cursor.execute("""
+                INSERT INTO Orders (OrderID, CustomerID, RestaurantID, PriceTotal, Additional_Costs)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (next_order_id, customer_id, restaurant_id, price_total, additional_costs))
+            
+            # Create FoodOrders entries for each item
+            for item in items:
+                cursor.execute("""
+                    INSERT INTO FoodOrders (OrderID, FoodID, Quantity)
+                    VALUES (%s, %s, %s)
+                """, (next_order_id, item['FoodID'], item['quantity']))
+
+            conn.commit()
+            return jsonify({
+                'message': 'Order created successfully',
+                'orderID': next_order_id
+            }), 201
+
+        except Exception as e:
+            conn.rollback()
+            print("Database error:", str(e))
+            raise e
+
+        finally:
+            cursor.close()
+            conn.close()
+
+    except Exception as e:
+        print("Error creating order:", str(e))
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orders/customer/<int:customer_id>', methods=['GET'])
+def get_customer_orders(customer_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # First get all orders for the customer
+        cursor.execute("""
+            SELECT o.OrderID, o.CustomerID, o.RestaurantID, o.PriceTotal, o.Additional_Costs,
+                   r.RestaurantName
+            FROM Orders o
+            JOIN Restaurant r ON o.RestaurantID = r.RestaurantID
+            WHERE o.CustomerID = %s
+            ORDER BY o.OrderID DESC
+        """, (customer_id,))
+        
+        orders = []
+        orders_data = cursor.fetchall()
+
+        # Convert the orders data to a list of dictionaries
+        for order in orders_data:
+            additional_costs = float(order[4]) if order[4] is not None else 0
+            order_dict = {
+                'OrderID': order[0],
+                'CustomerID': order[1],
+                'RestaurantID': order[2],
+                'PriceTotal': float(order[3]),
+                'Additional_Costs': additional_costs,
+                'TotalCost': float(order[3]) + additional_costs,  # Sum of PriceTotal and Additional_Costs
+                'RestaurantName': order[5],
+                'items': []
+            }
+            
+            # Get food items for this order
+            cursor.execute("""
+                SELECT f.FoodID, f.FoodName, f.Price, fo.Quantity
+                FROM FoodOrders fo
+                JOIN Food f ON fo.FoodID = f.FoodID
+                WHERE fo.OrderID = %s
+            """, (order_dict['OrderID'],))
+            
+            food_items = cursor.fetchall()
+            
+            # Add food items to the order
+            for item in food_items:
+                order_dict['items'].append({
+                    'FoodID': item[0],
+                    'FoodName': item[1],
+                    'Price': float(item[2]),
+                    'Quantity': item[3]
+                })
+            
+            orders.append(order_dict)
+
+        cursor.close()
+        conn.close()
+
+        return jsonify(orders)
+
+    except Exception as e:
+        print("Error fetching orders:", str(e))
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

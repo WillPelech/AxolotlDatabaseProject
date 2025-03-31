@@ -48,31 +48,37 @@ function Navbar() {
                             >
                                 Map
                             </Link>
-                            {user && user.isRestaurant && (
-                                <>
-                                    <Link
-                                        to="/create-restaurant"
-                                        className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                                    >
-                                        Create Restaurant
-                                    </Link>
-                                    <Link
-                                        to="/manage-restaurants"
-                                        className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                                    >
-                                        Manage Restaurants
-                                    </Link>
-                                </>
-                            )}
                         </div>
                     </div>
 
                     <div className="flex items-center space-x-4">
                         {user ? (
                             <div className="flex items-center space-x-4">
-                                <span className="text-gray-700">
-                                    {user.username} ({user.accountType === 'restaurant' ? 'Restaurant Account' : 'Customer Account'})
-                                </span>
+                                {user.accountType === 'restaurant' ? (
+                                    <>
+                                        <Link
+                                            to="/manage-restaurants"
+                                            className="text-gray-700 hover:text-orange-500 px-3 py-2 rounded-md text-sm font-medium"
+                                        >
+                                            Manage Restaurants
+                                        </Link>
+                                        <span className="text-gray-700">
+                                            (Restaurant Account)
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Link
+                                            to="/orders"
+                                            className="text-gray-700 hover:text-orange-500 px-3 py-2 rounded-md text-sm font-medium"
+                                        >
+                                            My Orders
+                                        </Link>
+                                        <span className="text-gray-700">
+                                            (Customer Account)
+                                        </span>
+                                    </>
+                                )}
                                 <button
                                     onClick={handleLogout}
                                     className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
