@@ -1,16 +1,13 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from google.cloud.sql.connector import Connector
-from google.oauth2 import service_account
-import pymysql
+from flask_sqlalchemy import SQLAlchemy
 import os
 from dotenv import load_dotenv
 import hashlib
 import jwt
 from datetime import datetime, timezone, timedelta
 from flask_cors import cross_origin
-
-import pymysql.cursors
+import pymysql
 
 # Load environment variables
 load_dotenv()
@@ -19,26 +16,117 @@ app = Flask(__name__, static_folder='../frontend-react/build', static_url_path='
 CORS(app)  # Enable CORS for all routes
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')  # Add this to your .env file
 
-# Get credentials from environment variables
-DB_USER = os.getenv('DB_USER')
-DB_NAME = os.getenv('DB_NAME')
-INSTANCE_CONNECTION_NAME = os.getenv('INSTANCE_CONNECTION_NAME')
-SERVICE_ACCOUNT_KEY = os.getenv('SERVICE_ACCOUNT_KEY')
+# Database configuration
+DB_USER = os.getenv('DB_USER', 'avnadmin')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'AVNS_fiZMmHRZpGT6wl1WFN5')
+DB_HOST = os.getenv('DB_HOST', 'mysql-3b79a8a7-nyu-47b8.c.aivencloud.com')
+DB_PORT = os.getenv('DB_PORT', '19374')
+DB_NAME = os.getenv('DB_NAME', 'defaultdb')
 
-# Load credentials
-credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_KEY)
+# Configure SQLAlchemy
+app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 10,
+    'pool_recycle': 3600,
+    'pool_pre_ping': True,
+    'connect_args': {'ssl': {'ca': None}}  # Use SSL but don't verify certificate
+}
 
-#Create an instance of Connector(google cloud connector) to create a connection between the gcloud db
-#This will be used as a cursor to run SQL on the DB from Flask API endpoints
-def get_db_connection():
-    connector = Connector(credentials=credentials)
-    connection = connector.connect(
-        INSTANCE_CONNECTION_NAME,
-        "pymysql",
-        user=DB_USER,
-        db=DB_NAME
-    )
-    return connection
+# Initialize SQLAlchemy
+db = SQLAlchemy(app)
+
+# Define models
+class Customer(db.Model):
+    __tablename__ = 'Customer'
+    CustomerID = db.Column(db.Integer, primary_key=True)
+    Username = db.Column(db.String(50), unique=True, nullable=False)
+    Password = db.Column(db.String(64), nullable=False)
+    Email = db.Column(db.String(100), unique=True, nullable=False)
+    DateOfBirth = db.Column(db.Date, nullable=True)
+
+class RestaurantAccount(db.Model):
+    __tablename__ = 'Restaurant_Account'
+    AccountID = db.Column(db.Integer, primary_key=True)
+    Username = db.Column(db.String(50), unique=True, nullable=False)
+    Password = db.Column(db.String(64), nullable=False)
+    Email = db.Column(db.String(100), unique=True, nullable=False)
+
+class Restaurant(db.Model):
+    __tablename__ = 'Restaurant'
+    RestaurantID = db.Column(db.Integer, primary_key=True)
+    RestaurantName = db.Column(db.String(100), nullable=False)
+    Category = db.Column(db.String(50), nullable=True)
+    Rating = db.Column(db.Float, nullable=True)
+    PhoneNumber = db.Column(db.String(20), nullable=True)
+    Address = db.Column(db.String(200), nullable=True)
+    AccountID = db.Column(db.Integer, db.ForeignKey('Restaurant_Account.AccountID'), nullable=True)
+    ImageURL = db.Column(db.String(255), nullable=True)
+    PriceRange = db.Column(db.String(20), nullable=True)
+
+class Food(db.Model):
+    __tablename__ = 'Food'
+    FoodID = db.Column(db.Integer, primary_key=True)
+    FoodName = db.Column(db.String(100), nullable=False)
+    Price = db.Column(db.Float, nullable=False)
+    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), nullable=False)
+
+class Orders(db.Model):
+    __tablename__ = 'Orders'
+    OrderID = db.Column(db.Integer, primary_key=True)
+    CustomerID = db.Column(db.Integer, db.ForeignKey('Customer.CustomerID'), nullable=False)
+    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), nullable=False)
+    PriceTotal = db.Column(db.Float, nullable=False)
+    Additional_Costs = db.Column(db.Float, nullable=True, default=0)
+
+class FoodOrders(db.Model):
+    __tablename__ = 'FoodOrders'
+    OrderID = db.Column(db.Integer, db.ForeignKey('Orders.OrderID'), primary_key=True)
+    FoodID = db.Column(db.Integer, db.ForeignKey('Food.FoodID'), primary_key=True)
+    Quantity = db.Column(db.Integer, nullable=False)
+
+class Messages(db.Model):
+    __tablename__ = 'Messages'
+    MessageID = db.Column(db.Integer, primary_key=True)
+    SenderID = db.Column(db.Integer, nullable=False)
+    RecipientID = db.Column(db.Integer, nullable=False)
+    Timestamp = db.Column(db.DateTime, nullable=False)
+    Contents = db.Column(db.Text, nullable=False)
+
+class Review(db.Model):
+    __tablename__ = 'Review'
+    ReviewID = db.Column(db.Integer, primary_key=True)
+    CustomerID = db.Column(db.Integer, db.ForeignKey('Customer.CustomerID'), nullable=False)
+    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), nullable=False)
+    Rating = db.Column(db.Integer, nullable=False)
+    Comment = db.Column(db.Text, nullable=True)
+    Date = db.Column(db.DateTime, nullable=False)
+
+class RestaurantCuisine(db.Model):
+    __tablename__ = 'RestaurantCuisine'
+    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), primary_key=True)
+    CuisineID = db.Column(db.Integer, db.ForeignKey('Cuisine.CuisineID'), primary_key=True)
+
+class Cuisine(db.Model):
+    __tablename__ = 'Cuisine'
+    CuisineID = db.Column(db.Integer, primary_key=True)
+    Name = db.Column(db.String(50), nullable=False)
+
+class RestaurantFeature(db.Model):
+    __tablename__ = 'RestaurantFeature'
+    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), primary_key=True)
+    FeatureID = db.Column(db.Integer, db.ForeignKey('Feature.FeatureID'), primary_key=True)
+
+class Feature(db.Model):
+    __tablename__ = 'Feature'
+    FeatureID = db.Column(db.Integer, primary_key=True)
+    Name = db.Column(db.String(50), nullable=False)
+
+class FrontPage(db.Model):
+    __tablename__ = 'Front_Page'
+    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), primary_key=True)
+    PushPoints = db.Column(db.Integer, nullable=False)
+    Date = db.Column(db.DateTime, nullable=False)
 
 def hash_password(password):
     # Ensure the password is a string and encode it consistently
@@ -70,69 +158,58 @@ def serve(path):
 def signup():
     try:
         data = request.json
-        connection = get_db_connection()
-        cursor = connection.cursor()
+        account_type = data.get('accountType', 'customer')  # Default to customer if not specified
 
         # Check if username or email already exists in both tables
-        cursor.execute("""
-            SELECT CustomerID FROM Customer 
-            WHERE Username = %s OR Email = %s
-        """, (data['username'], data['email']))
-        if cursor.fetchone():
+        existing_customer = Customer.query.filter(
+            (Customer.Username == data['username']) | (Customer.Email == data['email'])
+        ).first()
+        
+        if existing_customer:
             return jsonify({"error": "Username or email already exists"}), 400
 
-        cursor.execute("""
-            SELECT AccountID FROM Restaurant_Account 
-            WHERE Username = %s OR Email = %s
-        """, (data['username'], data['email']))
-        if cursor.fetchone():
+        existing_restaurant = RestaurantAccount.query.filter(
+            (RestaurantAccount.Username == data['username']) | (RestaurantAccount.Email == data['email'])
+        ).first()
+        
+        if existing_restaurant:
             return jsonify({"error": "Username or email already exists"}), 400
-
-        account_type = data.get('accountType', 'customer')  # Default to customer if not specified
 
         if account_type == 'restaurant':
             # Get the next AccountID for Restaurant_Account
-            cursor.execute("SELECT MAX(AccountID) FROM Restaurant_Account")
-            max_acc_id = cursor.fetchone()[0]
-            next_acc_id = 1 if max_acc_id is None else max_acc_id + 1
+            max_acc = db.session.query(db.func.max(RestaurantAccount.AccountID)).scalar()
+            next_acc_id = 1 if max_acc is None else max_acc + 1
 
-            # Insert new restaurant account
-            cursor.execute("""
-                INSERT INTO Restaurant_Account (AccountID, Username, Email, Password)
-                VALUES (%s, %s, %s, %s)
-            """, (
-                next_acc_id,
-                data['username'],
-                data['email'],
-                hash_password(data['password'])
-            ))
+            # Create new restaurant account
+            new_account = RestaurantAccount(
+                AccountID=next_acc_id,
+                Username=data['username'],
+                Email=data['email'],
+                Password=hash_password(data['password'])
+            )
+            db.session.add(new_account)
             
             account_id = next_acc_id
             message = "Restaurant account created successfully"
         else:
             # Get the next CustomerID
-            cursor.execute("SELECT MAX(CustomerID) FROM Customer")
-            max_cust_id = cursor.fetchone()[0]
-            next_cust_id = 1 if max_cust_id is None else max_cust_id + 1
+            max_cust = db.session.query(db.func.max(Customer.CustomerID)).scalar()
+            next_cust_id = 1 if max_cust is None else max_cust + 1
 
-            # Insert new customer account
-            cursor.execute("""
-                INSERT INTO Customer (CustomerID, Username, Password, Email, DateOfBirth)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (
-                next_cust_id,
-                data['username'],
-                hash_password(data['password']),
-                data['email'],
-                data.get('dateOfBirth')
-            ))
+            # Create new customer account
+            new_customer = Customer(
+                CustomerID=next_cust_id,
+                Username=data['username'],
+                Password=hash_password(data['password']),
+                Email=data['email'],
+                DateOfBirth=data.get('dateOfBirth')
+            )
+            db.session.add(new_customer)
             
             account_id = next_cust_id
             message = "Customer account created successfully"
         
-        connection.commit()
-        cursor.close()
-        connection.close()
+        db.session.commit()
         
         return jsonify({
             "message": message,
@@ -140,6 +217,7 @@ def signup():
             "accountType": account_type
         }), 201
     except Exception as e:
+        db.session.rollback()
         print(f"Signup error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
@@ -161,39 +239,32 @@ def login():
         password = data.get('password')
 
         print(f"Login attempt for username/email: {username_or_email}")
-        connection = get_db_connection()
-        cursor = connection.cursor()
-
+        
         # First try Customer table
-        cursor.execute(
-            "SELECT CustomerID, Username, Password, Email FROM Customer WHERE (Username = %s OR Email = %s)",
-            (username_or_email, username_or_email)
-        )
-        user = cursor.fetchone()
+        user = Customer.query.filter(
+            (Customer.Username == username_or_email) | (Customer.Email == username_or_email)
+        ).first()
         account_type = 'customer'
 
         # If not found in Customer table, try Restaurant_Account table
         if not user:
-            cursor.execute(
-                "SELECT AccountID, Username, Password, Email FROM Restaurant_Account WHERE (Username = %s OR Email = %s)",
-                (username_or_email, username_or_email)
-            )
-            user = cursor.fetchone()
+            user = RestaurantAccount.query.filter(
+                (RestaurantAccount.Username == username_or_email) | (RestaurantAccount.Email == username_or_email)
+            ).first()
             account_type = 'restaurant'
 
         print(f"Database query result: {user}")
         print(f"Account type: {account_type}")
 
         if user:
-            stored_password = user[2]  # Password is now always at index 2 due to explicit column selection
-            if check_password(password, stored_password):
+            if check_password(password, user.Password):
                 response = {
                     'message': f'Login successful - You are logged in as a {account_type} account',
                     'user': {
-                        'username': user[1],  # Username
-                        'email': user[3],     # Email
+                        'username': user.Username,
+                        'email': user.Email,
                         'accountType': account_type,
-                        'accountId': user[0],  # ID is always at index 0
+                        'accountId': user.CustomerID if account_type == 'customer' else user.AccountID,
                         'isRestaurant': account_type == 'restaurant'
                     }
                 }
@@ -207,29 +278,6 @@ def login():
     except Exception as e:
         print(f"Login error: {str(e)}")
         return jsonify({'error': 'Login failed'}), 500
-
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'connection' in locals():
-            connection.close()
-
-def update_password_to_hash(customer_id, hashed_password):
-    try:
-        connection = get_db_connection()
-        cursor = connection.cursor()
-        
-        cursor.execute(
-            "UPDATE Customer SET Password = %s WHERE CustomerID = %s",
-            (hashed_password, customer_id)
-        )
-        
-        connection.commit()
-        cursor.close()
-        connection.close()
-        print(f"Updated password to hash for customer {customer_id}")
-    except Exception as e:
-        print(f"Error updating password hash: {str(e)}")
 
 def verify_token(token):
     try:
@@ -251,43 +299,36 @@ def verify_auth():
         if not user_id:
             return jsonify({"error": "Invalid or expired token"}), 401
 
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        user = Customer.query.filter_by(CustomerID=user_id).first()
         
-        cursor.execute("SELECT CustomerID, Username, Email FROM Customer WHERE CustomerID = %s", (user_id,))
-        user = cursor.fetchone()
-        
-        cursor.close()
-        connection.close()
-
         if not user:
             return jsonify({"error": "User not found"}), 404
 
         return jsonify({
             "user": {
-                "id": user['CustomerID'],
-                "username": user['Username'],
-                "email": user['Email']
+                "id": user.CustomerID,
+                "username": user.Username,
+                "email": user.Email
             }
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
 
 @app.route('/api/restaurants', methods=['GET'])
 def get_all_restaurants():
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-
-        cursor.execute("SELECT * FROM Restaurant")
-        restaurants = cursor.fetchall()
-
-        cursor.close()
-        connection.close()
-
+        restaurants = Restaurant.query.all()
         return jsonify({
-            "restaurants": restaurants
+            "restaurants": [{
+                'RestaurantID': r.RestaurantID,
+                'RestaurantName': r.RestaurantName,
+                'Category': r.Category,
+                'Rating': r.Rating,
+                'PhoneNumber': r.PhoneNumber,
+                'Address': r.Address,
+                'ImageURL': r.ImageURL,
+                'PriceRange': r.PriceRange
+            } for r in restaurants]
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -295,17 +336,13 @@ def get_all_restaurants():
 @app.route('/api/restaurants/<int:restaurant_id>/foods', methods=['GET'])
 def get_restaurant_foods(restaurant_id):
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("""
-            SELECT FoodID, FoodName, Price
-            FROM Food
-            WHERE RestaurantID = %s
-        """, (restaurant_id,))
+        foods = Food.query.filter_by(RestaurantID=restaurant_id).all()
         
-        foodlist = cursor.fetchall()
-        cursor.close()
-        connection.close()
+        foodlist = [{
+            'FoodID': f.FoodID,
+            'FoodName': f.FoodName,
+            'Price': f.Price
+        } for f in foods]
         
         print(f"Retrieved {len(foodlist)} foods for restaurant {restaurant_id}")  # Add logging
         
@@ -333,38 +370,34 @@ def create_food(restaurant_id):
                 'error': 'Food name and price are required'
             }), 400
 
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        
         # Get the next FoodID
-        cursor.execute("SELECT MAX(FoodID) FROM Food")
-        result = cursor.fetchone()
-        next_food_id = 1 if result['MAX(FoodID)'] is None else result['MAX(FoodID)'] + 1
+        max_food_id = db.session.query(db.func.max(Food.FoodID)).scalar()
+        next_food_id = 1 if max_food_id is None else max_food_id + 1
 
-        # Insert the new food item
-        cursor.execute("""
-            INSERT INTO Food (FoodID, FoodName, Price, RestaurantID)
-            VALUES (%s, %s, %s, %s)
-        """, (next_food_id, food_name, price, restaurant_id))
-        
-        connection.commit()
+        # Create new food item
+        new_food = Food(
+            FoodID=next_food_id,
+            FoodName=food_name,
+            Price=price,
+            RestaurantID=restaurant_id
+        )
+        db.session.add(new_food)
+        db.session.commit()
         
         # Return the created food item
-        new_food = {
-            'FoodID': next_food_id,
-            'FoodName': food_name,
-            'Price': price,
-            'RestaurantID': restaurant_id
+        new_food_dict = {
+            'FoodID': new_food.FoodID,
+            'FoodName': new_food.FoodName,
+            'Price': new_food.Price,
+            'RestaurantID': new_food.RestaurantID
         }
-        
-        cursor.close()
-        connection.close()
         
         return jsonify({
             'success': True,
-            'food': new_food
+            'food': new_food_dict
         })
     except Exception as e:
+        db.session.rollback()
         print(f"Error creating food: {str(e)}")  # Add logging
         return jsonify({
             'success': False,
@@ -374,18 +407,21 @@ def create_food(restaurant_id):
 @app.route('/api/restaurants/<int:id>', methods=['GET'])
 def get_restaurant_by_id(id):
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s",(id))
-        restaurant = cursor.fetchone()
+        restaurant = Restaurant.query.filter_by(RestaurantID=id).first()
             
-        cursor.close()
-        connection.close()
-
         if restaurant:
             return jsonify({
                 "message": f"Restaurant {id} selected successfully",
-                "restaurant": restaurant
+                "restaurant": {
+                    'RestaurantID': restaurant.RestaurantID,
+                    'RestaurantName': restaurant.RestaurantName,
+                    'Category': restaurant.Category,
+                    'Rating': restaurant.Rating,
+                    'PhoneNumber': restaurant.PhoneNumber,
+                    'Address': restaurant.Address,
+                    'ImageURL': restaurant.ImageURL,
+                    'PriceRange': restaurant.PriceRange
+                }
             })
         else:
             return jsonify({
@@ -398,47 +434,46 @@ def get_restaurant_by_id(id):
 @app.route('/api/restaurants', methods=['POST'])
 def create_restaurant():
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
         data = request.json["restaurantData"]
-        cursor.execute("SELECT MAX(RestaurantID) FROM Restaurant")
-        max_id = cursor.fetchone()['MAX(RestaurantID)']
+        
+        # Get the next RestaurantID
+        max_id = db.session.query(db.func.max(Restaurant.RestaurantID)).scalar()
         next_id = 1 if max_id is None else max_id + 1
 
-        cursor.execute("""
-                INSERT INTO Restaurant (RestaurantID, RestaurantName, Category, Rating, PhoneNumber, Address, AccountID)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (next_id, data['name'], data['category'], None, data['phoneNumber'], data['address'], data['accountID']))
-        
-        connection.commit()
-        cursor.close()
-        connection.close()
+        # Create new restaurant
+        new_restaurant = Restaurant(
+            RestaurantID=next_id,
+            RestaurantName=data['name'],
+            Category=data['category'],
+            PhoneNumber=data['phoneNumber'],
+            Address=data['address'],
+            AccountID=data['accountID']
+        )
+        db.session.add(new_restaurant)
+        db.session.commit()
         
         return jsonify({
             'message': 'Restaurant created successfully',
             'restaurant': {
-                'RestaurantID': next_id,
-                'RestaurantName': data['name'],
-                'Category': data['category'],
-                'Rating': None,
-                'PhoneNumber': data['phoneNumber'],
-                'Address': data['address'],
-                'AccountID': data['accountID']
+                'RestaurantID': new_restaurant.RestaurantID,
+                'RestaurantName': new_restaurant.RestaurantName,
+                'Category': new_restaurant.Category,
+                'Rating': new_restaurant.Rating,
+                'PhoneNumber': new_restaurant.PhoneNumber,
+                'Address': new_restaurant.Address,
+                'AccountID': new_restaurant.AccountID
             }
         }), 201
     except Exception as e:
+        db.session.rollback()
         print(f"Error creating restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/restaurants/<int:id>', methods=['PUT'])
 def update_restaurant(id):
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        
         # First check if restaurant exists
-        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s", (id,))
-        restaurant = cursor.fetchone()
+        restaurant = Restaurant.query.filter_by(RestaurantID=id).first()
         
         if not restaurant:
             return jsonify({"error": "Restaurant not found"}), 404
@@ -447,83 +482,77 @@ def update_restaurant(id):
         restaurantData = data["restaurantData"]
         
         # Update the restaurant
-        cursor.execute("""
-            UPDATE Restaurant 
-            SET RestaurantName = %s, Category = %s, PhoneNumber = %s, Address = %s
-            WHERE RestaurantID = %s
-        """, (
-            restaurantData['RestaurantName'],
-            restaurantData['Category'],
-            restaurantData['PhoneNumber'],
-            restaurantData['Address'],
-            id
-        ))
+        restaurant.RestaurantName = restaurantData['RestaurantName']
+        restaurant.Category = restaurantData['Category']
+        restaurant.PhoneNumber = restaurantData['PhoneNumber']
+        restaurant.Address = restaurantData['Address']
         
-        connection.commit()
-        cursor.close()
-        connection.close()
+        db.session.commit()
         
         return jsonify({
             "message": "Restaurant updated successfully",
             "restaurant": {
-                "RestaurantID": id,
-                **restaurantData
+                "RestaurantID": restaurant.RestaurantID,
+                "RestaurantName": restaurant.RestaurantName,
+                "Category": restaurant.Category,
+                "PhoneNumber": restaurant.PhoneNumber,
+                "Address": restaurant.Address
             }
         })
     except Exception as e:
+        db.session.rollback()
         print(f"Error updating restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/restaurants/<int:id>', methods = ['DELETE'])
 def delete_restaurant(id):
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        
         # First check if restaurant exists
-        cursor.execute("SELECT * FROM Restaurant WHERE RestaurantID = %s", (id,))
-        restaurant = cursor.fetchone()
+        restaurant = Restaurant.query.filter_by(RestaurantID=id).first()
         
         if not restaurant:
             return jsonify({"error": "Restaurant not found"}), 404
             
         # First delete all associated food items
-        cursor.execute("DELETE FROM Food WHERE RestaurantID = %s", (id,))
+        Food.query.filter_by(RestaurantID=id).delete()
         
         # Then delete the restaurant
-        cursor.execute("DELETE FROM Restaurant WHERE RestaurantID = %s", (id,))
-        connection.commit()
-        
-        cursor.close()
-        connection.close()
+        db.session.delete(restaurant)
+        db.session.commit()
         
         return jsonify({
             "message": f"Restaurant {id} and all associated food items deleted successfully",
-            "restaurant": restaurant
+            "restaurant": {
+                'RestaurantID': restaurant.RestaurantID,
+                'RestaurantName': restaurant.RestaurantName,
+                'Category': restaurant.Category,
+                'Rating': restaurant.Rating,
+                'PhoneNumber': restaurant.PhoneNumber,
+                'Address': restaurant.Address
+            }
         })
     except Exception as e:
+        db.session.rollback()
         print(f"Error deleting restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/customers/<int:id>/restaurants', methods=['GET'])
 def get_reviewed_restaurants(id):
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-
-        cursor.execute("""
-                        SELECT DISTINCT r.RestaurantID, r.Category, r.Rating, r.PhoneNumber, r.Address, r.RestaurantName
-                        FROM Restaurant r
-                        JOIN Review rev 
-                        ON r.RestaurantID = rev.RestaurantID
-                        WHERE rev.CustomerID = %s""", (id,))
-        restaurants = cursor.fetchall()
-
-        cursor.close()
-        connection.close()
-
+        # Get restaurants that the customer has reviewed
+        restaurants = db.session.query(Restaurant).join(
+            Review, Restaurant.RestaurantID == Review.RestaurantID
+        ).filter(Review.CustomerID == id).distinct().all()
+        
         return jsonify({
-            "restaurants": restaurants
+            "restaurants": [{
+                'RestaurantID': r.RestaurantID,
+                'Category': r.Category,
+                'Rating': r.Rating,
+                'PhoneNumber': r.PhoneNumber,
+                'Address': r.Address,
+                'RestaurantName': r.RestaurantName
+            } for r in restaurants]
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -531,14 +560,15 @@ def get_reviewed_restaurants(id):
 @app.route('/api/messages', methods = ['GET'])
 def get_messages():
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM Messages")
-        messages = cursor.fetchall()
-        cursor.close()
-        connection.close()
+        messages = Messages.query.all()
         return jsonify({
-            "messages":messages 
+            "messages": [{
+                'MessageID': m.MessageID,
+                'SenderID': m.SenderID,
+                'RecipientID': m.RecipientID,
+                'Timestamp': m.Timestamp,
+                'Contents': m.Contents
+            } for m in messages]
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -546,65 +576,92 @@ def get_messages():
 @app.route('/api/messages', methods=['POST'])
 def create_message():
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
         data = request.json["messageData"]
-        cursor.execute("SELECT MAX(MessageID) FROM Messages")
-        max_id = cursor.fetchone()[0]
+        
+        # Get the next MessageID
+        max_id = db.session.query(db.func.max(Messages.MessageID)).scalar()
         next_id = 1 if max_id is None else max_id + 1
 
-        cursor.execute("""
-                INSERT INTO Messages
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (next_id, data['senderID'], data['recipientID'], data['timestamp'], data['contents']))
-        cursor.close()
-        connection.commit()
-        connection.close()
+        # Create new message
+        new_message = Messages(
+            MessageID=next_id,
+            SenderID=data['senderID'],
+            RecipientID=data['recipientID'],
+            Timestamp=data['timestamp'],
+            Contents=data['contents']
+        )
+        db.session.add(new_message)
+        db.session.commit()
+        
         return jsonify({'message': 'Message created successfully'}), 201
     except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/messages/<int:id>', methods = ['GET'])
 def get_messages_by_id():
     try:
         id = request.json["id"]
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM Messages WHERE MessageID = %s",(id))
-        message = cursor.fetchone()
-        cursor.close()
-        connection.close()
-        return jsonify({
-            "message":message 
-        })
+        message = Messages.query.filter_by(MessageID=id).first()
+        
+        if message:
+            return jsonify({
+                "message": {
+                    'MessageID': message.MessageID,
+                    'SenderID': message.SenderID,
+                    'RecipientID': message.RecipientID,
+                    'Timestamp': message.Timestamp,
+                    'Contents': message.Contents
+                }
+            })
+        else:
+            return jsonify({"error": "Message not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/restaurants/front-page', methods=['GET'])
 def get_front_page_restaurants():
     try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-
-        # Get restaurants from Front_Page table ordered by date (most recent) and push points (highest)
-        cursor.execute("""
-            SELECT r.*, fp.PushPoints, fp.Date
-            FROM Restaurant r
-            JOIN Front_Page fp ON r.RestaurantID = fp.RestaurantID
-            ORDER BY fp.Date DESC, fp.PushPoints DESC
-        """)
-        restaurants = cursor.fetchall()
-
-        cursor.close()
-        connection.close()
-
-        return jsonify({
-            "restaurants": restaurants
-        })
+        print("Attempting to fetch front page restaurants...")
+        
+        # First check if there are any restaurants in the database
+        restaurant_count = db.session.query(Restaurant).count()
+        print(f"Total restaurants in database: {restaurant_count}")
+        
+        # Check if there are any entries in the Front_Page table
+        front_page_count = db.session.query(FrontPage).count()
+        print(f"Total entries in Front_Page table: {front_page_count}")
+        
+        # Get restaurants from the Front_Page table
+        restaurants = db.session.query(Restaurant).join(
+            FrontPage, Restaurant.RestaurantID == FrontPage.RestaurantID
+        ).order_by(FrontPage.PushPoints.desc()).limit(6).all()
+        
+        print(f"Found {len(restaurants)} restaurants for front page")
+        
+        result = []
+        for restaurant in restaurants:
+            restaurant_data = {
+                'id': restaurant.RestaurantID,
+                'name': restaurant.RestaurantName,
+                'description': restaurant.Category,  # Using Category as description
+                'imageUrl': restaurant.ImageURL,
+                'rating': float(restaurant.Rating) if restaurant.Rating else 0,
+                'priceRange': restaurant.PriceRange,
+                'cuisines': [],  # Empty array since we're not querying cuisines
+                'features': []   # Empty array since we're not querying features
+            }
+            result.append(restaurant_data)
+            print(f"Added restaurant: {restaurant_data['name']} (ID: {restaurant_data['id']})")
+            
+        print(f"Returning {len(result)} restaurants")
+        return jsonify(result)
     except Exception as e:
         print(f"Error fetching front page restaurants: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        traceback.print_exc()  # Print the full stack trace
+        # Return empty array instead of error to prevent frontend issues
+        return jsonify([])
 
 @app.route('/api/orders', methods=['POST'])
 def create_order():
@@ -627,42 +684,40 @@ def create_order():
             }.items() if not value]
             return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
         try:
             # Get the next OrderID
-            cursor.execute("SELECT MAX(OrderID) FROM Orders")
-            result = cursor.fetchone()
-            next_order_id = 1 if result[0] is None else result[0] + 1
+            max_order_id = db.session.query(db.func.max(Orders.OrderID)).scalar()
+            next_order_id = 1 if max_order_id is None else max_order_id + 1
 
             # Create the order entry with Additional_Costs
-            cursor.execute("""
-                INSERT INTO Orders (OrderID, CustomerID, RestaurantID, PriceTotal, Additional_Costs)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (next_order_id, customer_id, restaurant_id, price_total, additional_costs))
+            new_order = Orders(
+                OrderID=next_order_id,
+                CustomerID=customer_id,
+                RestaurantID=restaurant_id,
+                PriceTotal=price_total,
+                Additional_Costs=additional_costs
+            )
+            db.session.add(new_order)
             
             # Create FoodOrders entries for each item
             for item in items:
-                cursor.execute("""
-                    INSERT INTO FoodOrders (OrderID, FoodID, Quantity)
-                    VALUES (%s, %s, %s)
-                """, (next_order_id, item['FoodID'], item['quantity']))
+                food_order = FoodOrders(
+                    OrderID=next_order_id,
+                    FoodID=item['FoodID'],
+                    Quantity=item['quantity']
+                )
+                db.session.add(food_order)
 
-            conn.commit()
+            db.session.commit()
             return jsonify({
                 'message': 'Order created successfully',
                 'orderID': next_order_id
             }), 201
 
         except Exception as e:
-            conn.rollback()
+            db.session.rollback()
             print("Database error:", str(e))
             raise e
-
-        finally:
-            cursor.close()
-            conn.close()
 
     except Exception as e:
         print("Error creating order:", str(e))
@@ -671,45 +726,37 @@ def create_order():
 @app.route('/api/orders/customer/<int:customer_id>', methods=['GET'])
 def get_customer_orders(customer_id):
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # First get all orders for the customer
-        cursor.execute("""
-            SELECT o.OrderID, o.CustomerID, o.RestaurantID, o.PriceTotal, o.Additional_Costs,
-                   r.RestaurantName
-            FROM Orders o
-            JOIN Restaurant r ON o.RestaurantID = r.RestaurantID
-            WHERE o.CustomerID = %s
-            ORDER BY o.OrderID DESC
-        """, (customer_id,))
+        # Get all orders for the customer
+        orders_data = db.session.query(
+            Orders, Restaurant.RestaurantName
+        ).join(
+            Restaurant, Orders.RestaurantID == Restaurant.RestaurantID
+        ).filter(
+            Orders.CustomerID == customer_id
+        ).order_by(Orders.OrderID.desc()).all()
         
         orders = []
-        orders_data = cursor.fetchall()
-
-        # Convert the orders data to a list of dictionaries
-        for order in orders_data:
-            additional_costs = float(order[4]) if order[4] is not None else 0
+        for order, restaurant_name in orders_data:
+            additional_costs = float(order.Additional_Costs) if order.Additional_Costs is not None else 0
             order_dict = {
-                'OrderID': order[0],
-                'CustomerID': order[1],
-                'RestaurantID': order[2],
-                'PriceTotal': float(order[3]),
+                'OrderID': order.OrderID,
+                'CustomerID': order.CustomerID,
+                'RestaurantID': order.RestaurantID,
+                'PriceTotal': float(order.PriceTotal),
                 'Additional_Costs': additional_costs,
-                'TotalCost': float(order[3]) + additional_costs,  # Sum of PriceTotal and Additional_Costs
-                'RestaurantName': order[5],
+                'TotalCost': float(order.PriceTotal) + additional_costs,  # Sum of PriceTotal and Additional_Costs
+                'RestaurantName': restaurant_name,
                 'items': []
             }
             
             # Get food items for this order
-            cursor.execute("""
-                SELECT f.FoodID, f.FoodName, f.Price, fo.Quantity
-                FROM FoodOrders fo
-                JOIN Food f ON fo.FoodID = f.FoodID
-                WHERE fo.OrderID = %s
-            """, (order_dict['OrderID'],))
-            
-            food_items = cursor.fetchall()
+            food_items = db.session.query(
+                Food.FoodID, Food.FoodName, Food.Price, FoodOrders.Quantity
+            ).join(
+                FoodOrders, Food.FoodID == FoodOrders.FoodID
+            ).filter(
+                FoodOrders.OrderID == order_dict['OrderID']
+            ).all()
             
             # Add food items to the order
             for item in food_items:
@@ -721,9 +768,6 @@ def get_customer_orders(customer_id):
                 })
             
             orders.append(order_dict)
-
-        cursor.close()
-        conn.close()
 
         return jsonify(orders)
 

@@ -1,0 +1,92 @@
+Tables in database:
+
+Table: Cuisine
+Columns:
+  CuisineID: int
+  Name: varchar(50)
+
+Table: Customer
+Columns:
+  CustomerID: int
+  Username: varchar(50)
+  Password: varchar(64)
+  Email: varchar(100)
+  DateOfBirth: date
+
+Table: Feature
+Columns:
+  FeatureID: int
+  Name: varchar(50)
+
+Table: Food
+Columns:
+  FoodID: int
+  FoodName: varchar(100)
+  Price: float
+  RestaurantID: int
+
+Table: FoodOrders
+Columns:
+  OrderID: int
+  FoodID: int
+  Quantity: int
+
+Table: Front_Page
+Columns:
+  RestaurantID: int
+  PushPoints: int
+  Date: datetime
+
+Table: Messages
+Columns:
+  MessageID: int
+  SenderID: int
+  RecipientID: int
+  Timestamp: datetime
+  Contents: text
+
+Table: Orders
+Columns:
+  OrderID: int
+  CustomerID: int
+  RestaurantID: int
+  PriceTotal: float
+  Additional_Costs: float
+
+Table: Restaurant
+Columns:
+  RestaurantID: int
+  RestaurantName: varchar(100)
+  Category: varchar(50)
+  Rating: float
+  PhoneNumber: varchar(20)
+  Address: varchar(200)
+  AccountID: int
+  ImageURL: varchar(255)
+  PriceRange: varchar(20)
+
+Table: RestaurantCuisine
+Columns:
+  RestaurantID: int
+  CuisineID: int
+
+Table: RestaurantFeature
+Columns:
+  RestaurantID: int
+  FeatureID: int
+
+Table: Restaurant_Account
+Columns:
+  AccountID: int
+  Username: varchar(50)
+  Password: varchar(64)
+  Email: varchar(100)
+
+Table: Review
+Columns:
+  ReviewID: int
+  CustomerID: int
+  RestaurantID: int
+  Rating: int
+  Comment: text
+  Date: datetime
