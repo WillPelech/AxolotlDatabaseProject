@@ -21,7 +21,7 @@ DB_USER = os.getenv('DB_USER', 'avnadmin')
 DB_PASSWORD = os.getenv('DB_PASSWORD', 'AVNS_fiZMmHRZpGT6wl1WFN5')
 DB_HOST = os.getenv('DB_HOST', 'mysql-3b79a8a7-nyu-47b8.c.aivencloud.com')
 DB_PORT = os.getenv('DB_PORT', '19374')
-DB_NAME = os.getenv('DB_NAME', 'defaultdb')
+DB_NAME = os.getenv('DB_NAME', 'project')
 
 # Configure SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
