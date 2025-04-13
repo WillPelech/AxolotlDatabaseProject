@@ -61,8 +61,7 @@ class Restaurant(db.Model):
     PhoneNumber = db.Column(db.String(20), nullable=True)
     Address = db.Column(db.String(200), nullable=True)
     AccountID = db.Column(db.Integer, db.ForeignKey('Restaurant_Account.AccountID'), nullable=True)
-    ImageURL = db.Column(db.String(255), nullable=True)
-    PriceRange = db.Column(db.String(20), nullable=True)
+    push_points = db.Column(db.Integer, nullable = True)
 
 class Food(db.Model):
     __tablename__ = 'Food'
@@ -101,26 +100,6 @@ class Review(db.Model):
     Rating = db.Column(db.Integer, nullable=False)
     Comment = db.Column(db.Text, nullable=True)
     Date = db.Column(db.DateTime, nullable=False)
-
-class RestaurantCuisine(db.Model):
-    __tablename__ = 'RestaurantCuisine'
-    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), primary_key=True)
-    CuisineID = db.Column(db.Integer, db.ForeignKey('Cuisine.CuisineID'), primary_key=True)
-
-class Cuisine(db.Model):
-    __tablename__ = 'Cuisine'
-    CuisineID = db.Column(db.Integer, primary_key=True)
-    Name = db.Column(db.String(50), nullable=False)
-
-class RestaurantFeature(db.Model):
-    __tablename__ = 'RestaurantFeature'
-    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), primary_key=True)
-    FeatureID = db.Column(db.Integer, db.ForeignKey('Feature.FeatureID'), primary_key=True)
-
-class Feature(db.Model):
-    __tablename__ = 'Feature'
-    FeatureID = db.Column(db.Integer, primary_key=True)
-    Name = db.Column(db.String(50), nullable=False)
 
 class FrontPage(db.Model):
     __tablename__ = 'Front_Page'
@@ -326,8 +305,7 @@ def get_all_restaurants():
                 'Rating': r.Rating,
                 'PhoneNumber': r.PhoneNumber,
                 'Address': r.Address,
-                'ImageURL': r.ImageURL,
-                'PriceRange': r.PriceRange
+                'PushPoints': r.push_points,
             } for r in restaurants]
         })
     except Exception as e:
@@ -418,9 +396,7 @@ def get_restaurant_by_id(id):
                     'Category': restaurant.Category,
                     'Rating': restaurant.Rating,
                     'PhoneNumber': restaurant.PhoneNumber,
-                    'Address': restaurant.Address,
-                    'ImageURL': restaurant.ImageURL,
-                    'PriceRange': restaurant.PriceRange
+                    'Address': restaurant.Address
                 }
             })
         else:
@@ -645,11 +621,8 @@ def get_front_page_restaurants():
                 'id': restaurant.RestaurantID,
                 'name': restaurant.RestaurantName,
                 'description': restaurant.Category,  # Using Category as description
-                'imageUrl': restaurant.ImageURL,
                 'rating': float(restaurant.Rating) if restaurant.Rating else 0,
-                'priceRange': restaurant.PriceRange,
-                'cuisines': [],  # Empty array since we're not querying cuisines
-                'features': []   # Empty array since we're not querying features
+                'PushPoints': restaurant.push_points
             }
             result.append(restaurant_data)
             print(f"Added restaurant: {restaurant_data['name']} (ID: {restaurant_data['id']})")

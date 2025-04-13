@@ -17,7 +17,8 @@ const Home = () => {
           throw new Error('Failed to fetch restaurants');
         }
         const data = await response.json();
-        setRestaurants(data.restaurants || []);
+        console.log(data)
+        setRestaurants(data);
       } catch (err) {
         console.error('Error fetching restaurants:', err);
         setError('Failed to load featured restaurants');
@@ -49,10 +50,10 @@ const Home = () => {
           <h2>Featured Restaurants</h2>
           <div className="restaurant-grid">
             {restaurants.map((restaurant) => (
-              <div key={restaurant.RestaurantID} className="restaurant-card">
-                <h3>{restaurant.RestaurantName}</h3>
-                <p>Category: {restaurant.Category}</p>
-                <p>Rating: {restaurant.Rating || 'No ratings yet'}</p>
+              <div key={restaurant.id} className="restaurant-card">
+                <h3>{restaurant.name}</h3>
+                <p>Category: {restaurant.description}</p>
+                <p>Rating: {restaurant.rating || 'No ratings yet'}</p>
                 <p>Push Points: {restaurant.PushPoints}</p>
                 <Link to={`/restaurant/${restaurant.RestaurantID}`} className="view-button">
                   View Details
