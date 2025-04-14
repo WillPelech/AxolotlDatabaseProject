@@ -55,7 +55,7 @@ const Home = () => {
                 <p>Category: {restaurant.description}</p>
                 <p>Rating: {restaurant.rating || 'No ratings yet'}</p>
                 <p>Push Points: {restaurant.PushPoints}</p>
-                <Link to={`/restaurant/${restaurant.RestaurantID}`} className="view-button">
+                <Link to={`/restaurant/${restaurant.id}`} className="view-button">
                   View Details
                 </Link>
               </div>
