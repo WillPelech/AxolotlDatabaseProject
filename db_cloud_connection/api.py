@@ -61,7 +61,6 @@ class Restaurant(db.Model):
     PhoneNumber = db.Column(db.String(20), nullable=True)
     Address = db.Column(db.String(200), nullable=True)
     AccountID = db.Column(db.Integer, db.ForeignKey('Restaurant_Account.AccountID'), nullable=True)
-    push_points = db.Column(db.Integer, nullable = True)
 
 class Food(db.Model):
     __tablename__ = 'Food'
@@ -305,7 +304,6 @@ def get_all_restaurants():
                 'Rating': r.Rating,
                 'PhoneNumber': r.PhoneNumber,
                 'Address': r.Address,
-                'PushPoints': r.push_points,
             } for r in restaurants]
         })
     except Exception as e:
@@ -622,7 +620,7 @@ def get_front_page_restaurants():
                 'name': restaurant.RestaurantName,
                 'description': restaurant.Category,  # Using Category as description
                 'rating': float(restaurant.Rating) if restaurant.Rating else 0,
-                'PushPoints': restaurant.push_points
+                'PushPoints': restaurant.PushPoints
             }
             result.append(restaurant_data)
             print(f"Added restaurant: {restaurant_data['name']} (ID: {restaurant_data['id']})")
