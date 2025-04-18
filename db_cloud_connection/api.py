@@ -17,11 +17,11 @@ CORS(app)  # Enable CORS for all routes
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')  # Add this to your .env file
 
 # Database configuration
-DB_USER = os.getenv('DB_USER', 'avnadmin')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'AVNS_fiZMmHRZpGT6wl1WFN5')
-DB_HOST = os.getenv('DB_HOST', 'mysql-3b79a8a7-nyu-47b8.c.aivencloud.com')
-DB_PORT = os.getenv('DB_PORT', '19374')
-DB_NAME = os.getenv('DB_NAME', 'project')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST')
+DB_PORT = os.getenv('DB_PORT')
+DB_NAME = os.getenv('DB_NAME')
 
 # Configure SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
@@ -619,8 +619,7 @@ def get_front_page_restaurants():
                 'id': restaurant.RestaurantID,
                 'name': restaurant.RestaurantName,
                 'description': restaurant.Category,  # Using Category as description
-                'rating': float(restaurant.Rating) if restaurant.Rating else 0,
-                'PushPoints': restaurant.PushPoints
+                'rating': float(restaurant.Rating) if restaurant.Rating else 0
             }
             result.append(restaurant_data)
             print(f"Added restaurant: {restaurant_data['name']} (ID: {restaurant_data['id']})")
