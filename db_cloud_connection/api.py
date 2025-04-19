@@ -755,6 +755,15 @@ def encodeBase64(image_path):
     except Exception as e:
         print(f"Image was unable to be encoded:{str(e)}")
         return None
+def decodeBase64(base64_str,output_path):
+    try:
+        image_data = base64.b64decode(base64_str)
+        with open(output_path,"wb") as image_file:
+            image_file.write(image_data)
+        return True
+    except Exception as e:
+        print(f"Error decoding Base64:{str(e)}")
+        return False
 
 
 if __name__ == '__main__':
