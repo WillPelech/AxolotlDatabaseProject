@@ -676,6 +676,8 @@ def create_order():
                 Additional_Costs=additional_costs
             )
             db.session.add(new_order)
+            # Flush the session to ensure the Orders row is inserted before FoodOrders
+            db.session.flush() 
             
             # Create FoodOrders entries for each item
             for item in items:
