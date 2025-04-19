@@ -48,6 +48,35 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signup = async (formData) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed');
+      }
+
+      // Signup successful, but don't automatically log in yet.
+      // The AuthModal handles login after successful signup.
+      return { success: true }; 
+
+    } catch (error) {
+      console.error('Signup error:', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
@@ -58,7 +87,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, signup }}>
       {children}
     </AuthContext.Provider>
   );
