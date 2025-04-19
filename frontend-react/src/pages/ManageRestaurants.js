@@ -16,13 +16,18 @@ function ManageRestaurants() {
 
   const fetchRestaurants = async () => {
     try {
+      if (!user || !user.accountId) {
+        setError('Please log in to manage restaurants');
+        return;
+      }
+
       const response = await fetch('http://localhost:5000/api/restaurants');
       const data = await response.json();
       
       if (response.ok) {
         // Filter restaurants to show only those owned by the current user
         const userRestaurants = data.restaurants.filter(
-          restaurant => restaurant.AccountID === user.accountId
+          restaurant => restaurant.AccountID === parseInt(user.accountId)
         );
         setRestaurants(userRestaurants);
       } else {
@@ -74,13 +79,13 @@ function ManageRestaurants() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Your Restaurants</h1>
+          <h1 className="text-3xl font-bold text-neutral-900">Manage Your Restaurants</h1>
           <button
             onClick={() => navigate('/create-restaurant')}
-            className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
+            className="btn-primary"
           >
             Create New Restaurant
           </button>
@@ -98,43 +103,33 @@ function ManageRestaurants() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {restaurants.map((restaurant) => (
-            <div
-              key={restaurant.RestaurantID}
-              className="bg-white rounded-lg shadow-md p-6"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                {restaurant.RestaurantName}
-              </h2>
-              <p className="text-gray-600 mb-1">{restaurant.Category}</p>
-              <p className="text-gray-600 mb-1">
-                Rating: {restaurant.Rating ? restaurant.Rating + '★' : '★'}
-              </p>
-              <p className="text-gray-600 mb-1">{restaurant.PhoneNumber}</p>
-              <p className="text-gray-600 mb-4">{restaurant.Address}</p>
-              
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => navigate(`/edit-restaurant/${restaurant.RestaurantID}`)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(restaurant.RestaurantID)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-                >
-                  Delete
-                </button>
+        {restaurants.length === 0 ? (
+          <div className="text-center text-neutral-500 py-8">
+            No restaurants found. Create your first restaurant to get started!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {restaurants.map((restaurant) => (
+              <div key={restaurant.RestaurantID} className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold text-neutral-900 mb-2">{restaurant.RestaurantName}</h2>
+                <p className="text-neutral-600 mb-2">{restaurant.Category}</p>
+                <p className="text-neutral-600 mb-4">{restaurant.Address}</p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => navigate(`/edit-restaurant/${restaurant.RestaurantID}`)}
+                    className="btn-secondary"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(restaurant.RestaurantID)}
+                    className="btn-primary"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {restaurants.length === 0 && (
-          <div className="text-center text-gray-600 mt-8">
-            <p>You haven't created any restaurants yet.</p>
+            ))}
           </div>
         )}
       </div>

@@ -12,20 +12,20 @@ function Profile() {
               alt="Profile"
               className="w-32 h-32 rounded-full"
             />
-            <button className="absolute bottom-0 right-0 bg-orange-600 text-white p-2 rounded-full hover:bg-orange-700">
+            <button className="absolute bottom-0 right-0 btn-primary p-2 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
               </svg>
             </button>
           </div>
           <div>
-            <h1 className="text-3xl font-bold">John Doe</h1>
-            <p className="text-gray-600">john.doe@example.com</p>
+            <h1 className="text-3xl font-bold text-neutral-900">John Doe</h1>
+            <p className="text-neutral-600">john.doe@example.com</p>
             <div className="mt-4 flex space-x-4">
-              <button className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700">
+              <button className="btn-primary">
                 Edit Profile
               </button>
-              <button className="bg-white text-orange-600 border border-orange-600 px-4 py-2 rounded-md hover:bg-orange-50">
+              <button className="btn-secondary">
                 Change Password
               </button>
             </div>
@@ -34,7 +34,7 @@ function Profile() {
       </div>
 
       {/* Profile Content */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Favorites */}
         <div className="md:col-span-2">
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -65,35 +65,35 @@ function Profile() {
         {/* Sidebar */}
         <div className="md:col-span-1">
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold mb-4">Account Settings</h2>
+            <h2 className="text-xl font-bold text-neutral-900 mb-4">Account Settings</h2>
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold">Notifications</h3>
+                <h3 className="font-semibold text-neutral-900">Notifications</h3>
                 <div className="mt-2 space-y-2">
                   <label className="flex items-center">
-                    <input type="checkbox" className="form-checkbox text-orange-600" />
-                    <span className="ml-2">Email notifications</span>
+                    <input type="checkbox" className="checkbox-primary" />
+                    <span className="ml-2 text-neutral-700">Email notifications</span>
                   </label>
                   <label className="flex items-center">
-                    <input type="checkbox" className="form-checkbox text-orange-600" />
-                    <span className="ml-2">Push notifications</span>
+                    <input type="checkbox" className="checkbox-primary" />
+                    <span className="ml-2 text-neutral-700">Push notifications</span>
                   </label>
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold">Privacy</h3>
+                <h3 className="font-semibold text-neutral-900">Privacy</h3>
                 <div className="mt-2 space-y-2">
                   <label className="flex items-center">
-                    <input type="checkbox" className="form-checkbox text-orange-600" />
-                    <span className="ml-2">Show profile to others</span>
+                    <input type="checkbox" className="checkbox-primary" />
+                    <span className="ml-2 text-neutral-700">Show profile to others</span>
                   </label>
                   <label className="flex items-center">
-                    <input type="checkbox" className="form-checkbox text-orange-600" />
-                    <span className="ml-2">Show favorites to others</span>
+                    <input type="checkbox" className="checkbox-primary" />
+                    <span className="ml-2 text-neutral-700">Show favorites to others</span>
                   </label>
                 </div>
               </div>
-              <button className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">
+              <button className="w-full btn-primary bg-red-600 hover:bg-red-700">
                 Delete Account
               </button>
             </div>

@@ -92,12 +92,12 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 max-w-md w-full">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-neutral-900">
             {authMode === 'login' ? 'Welcome Back!' : `Create ${accountType === 'restaurant' ? 'Restaurant' : 'Customer'} Account`}
           </h2>
           <button
             onClick={onClose}
-            className="text-orange-600 hover:text-orange-700 transition-colors text-xl font-semibold"
+            className="text-primary hover:text-primary-hover transition-colors text-xl font-semibold"
           >
             ✕
           </button>
@@ -109,9 +109,9 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Username
             </label>
             <input
@@ -119,16 +119,15 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
               name="username"
               value={formData.username}
               onChange={handleChange}
+              className="form-input w-full"
               required
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-              placeholder="Enter your username"
             />
           </div>
 
           {authMode === 'signup' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Email
                 </label>
                 <input
@@ -136,14 +135,13 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  className="form-input w-full"
                   required
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-                  placeholder="Enter your email"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Date of Birth
                 </label>
                 <input
@@ -151,15 +149,14 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
                   name="dateOfBirth"
                   value={formData.dateOfBirth}
                   onChange={handleChange}
-                  required
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                  className="form-input w-full"
                 />
               </div>
             </>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Password
             </label>
             <input
@@ -167,15 +164,14 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
               name="password"
               value={formData.password}
               onChange={handleChange}
+              className="form-input w-full"
               required
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-              placeholder="Enter your password"
             />
           </div>
 
           {authMode === 'signup' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Confirm Password
               </label>
               <input
@@ -183,9 +179,8 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                className="form-input w-full"
                 required
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
-                placeholder="Confirm your password"
               />
             </div>
           )}
@@ -193,7 +188,7 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
           <div className="pt-4">
             <button
               type="submit"
-              className="w-full px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors mb-3"
+              className="btn-primary w-full mb-3"
               disabled={loading}
             >
               {loading ? 'Processing...' : authMode === 'login' ? 'Login' : 'Create Account'}
@@ -202,7 +197,7 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
             <button
               type="button"
               onClick={onClose}
-              className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              className="btn-secondary w-full"
               disabled={loading}
             >
               Cancel
@@ -210,8 +205,8 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
           </div>
         </form>
 
-        <div className="mt-6 text-center border-t pt-6">
-          <p className="text-sm text-gray-600">
+        <div className="mt-4 text-center">
+          <p className="text-sm text-neutral-600">
             {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button
               onClick={() => {
@@ -226,7 +221,7 @@ const AuthModal = ({ isOpen, onClose, accountType = 'customer', initialAuthMode 
                 });
                 setError('');
               }}
-              className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
+              className="text-primary hover:text-primary-hover font-medium transition-colors"
             >
               {authMode === 'login' ? 'Sign up' : 'Login'}
             </button>

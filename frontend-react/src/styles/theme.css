@@ -1,0 +1,102 @@
+:root {
+  /* Primary Colors */
+  --primary-orange: #f97316;
+  --primary-orange-hover: #ea580c;
+  --primary-orange-light: #ffedd5;
+  
+  /* Neutral Colors */
+  --neutral-white: #ffffff;
+  --neutral-gray-50: #f9fafb;
+  --neutral-gray-100: #f3f4f6;
+  --neutral-gray-200: #e5e7eb;
+  --neutral-gray-300: #d1d5db;
+  --neutral-gray-400: #9ca3af;
+  --neutral-gray-500: #6b7280;
+  --neutral-gray-600: #4b5563;
+  --neutral-gray-700: #374151;
+  --neutral-gray-800: #1f2937;
+  --neutral-gray-900: #111827;
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: var(--primary-orange);
+  color: var(--neutral-white);
+  transition: background-color 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-orange-hover);
+}
+
+.btn-secondary {
+  background-color: var(--neutral-white);
+  color: var(--primary-orange);
+  border: 2px solid var(--primary-orange);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-secondary:hover {
+  background-color: var(--primary-orange-light);
+}
+
+/* Focus Styles */
+.focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
+}
+
+/* Link Styles */
+.link-primary {
+  color: var(--primary-orange);
+  transition: color 0.2s ease-in-out;
+}
+
+.link-primary:hover {
+  color: var(--primary-orange-hover);
+}
+
+/* Form Styles */
+.form-input:focus {
+  border-color: var(--primary-orange);
+  box-shadow: 0 0 0 1px var(--primary-orange);
+}
+
+/* Checkbox Styles */
+.checkbox-primary {
+  accent-color: var(--primary-orange);
+}
+
+/* Border Colors */
+.border-primary {
+  border-color: var(--primary-orange);
+}
+
+/* Text Colors */
+.text-primary {
+  color: var(--primary-orange);
+}
+
+.text-secondary {
+  color: var(--neutral-gray-600);
+}
+
+/* Background Colors */
+.bg-primary {
+  background-color: var(--primary-orange);
+}
+
+.bg-secondary {
+  background-color: var(--neutral-gray-50);
+}
+
+/* Hover Effects */
+.hover-primary:hover {
+  background-color: var(--primary-orange);
+  color: var(--neutral-white);
+}
+
+.hover-secondary:hover {
+  background-color: var(--primary-orange-light);
+  color: var(--primary-orange);
+} 

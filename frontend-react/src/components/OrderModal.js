@@ -32,7 +32,7 @@ const OrderModal = ({ isOpen, onClose, restaurant, foods, onSubmit }) => {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault(); // Prevent form submission
+    e.preventDefault();
     
     // Prevent submission if no items are selected
     if (Object.keys(selectedItems).length === 0) {
@@ -75,10 +75,10 @@ const OrderModal = ({ isOpen, onClose, restaurant, foods, onSubmit }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Place Order</h2>
+          <h2 className="text-2xl font-bold text-neutral-900">Place Order</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-neutral-500 hover:text-neutral-700"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -92,22 +92,22 @@ const OrderModal = ({ isOpen, onClose, restaurant, foods, onSubmit }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <h3 className="text-lg font-semibold mb-2">Select Items</h3>
             <div className="space-y-2">
               {foods.map((food) => (
-                <div key={food.FoodID} className="flex items-center justify-between p-3 border rounded hover:bg-gray-50">
+                <div key={food.FoodID} className="flex items-center justify-between p-3 border border-neutral-200 rounded hover:bg-neutral-50">
                   <div>
-                    <h4 className="font-medium">{food.FoodName}</h4>
-                    <p className="text-gray-600">${parseFloat(food.Price).toFixed(2)}</p>
+                    <h4 className="font-medium text-neutral-900">{food.FoodName}</h4>
+                    <p className="text-neutral-600">${parseFloat(food.Price).toFixed(2)}</p>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-2">
                       <button
                         type="button"
                         onClick={() => handleQuantityChange(food, (selectedItems[food.FoodID]?.quantity || 0) - 1)}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                        className="px-2 py-1 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200"
                       >
                         -
                       </button>
@@ -117,13 +117,13 @@ const OrderModal = ({ isOpen, onClose, restaurant, foods, onSubmit }) => {
                       <button
                         type="button"
                         onClick={() => handleQuantityChange(food, (selectedItems[food.FoodID]?.quantity || 0) + 1)}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                        className="px-2 py-1 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200"
                       >
                         +
                       </button>
                     </div>
                     {selectedItems[food.FoodID]?.quantity > 0 && (
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-neutral-600">
                         Total: ${(parseFloat(food.Price) * selectedItems[food.FoodID].quantity).toFixed(2)}
                       </p>
                     )}
@@ -134,7 +134,7 @@ const OrderModal = ({ isOpen, onClose, restaurant, foods, onSubmit }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Additional Fees (Optional)
             </label>
             <input
@@ -143,27 +143,27 @@ const OrderModal = ({ isOpen, onClose, restaurant, foods, onSubmit }) => {
               min="0"
               value={additionalFees}
               onChange={(e) => setAdditionalFees(e.target.value)}
-              className="w-full p-2 border rounded focus:ring-orange-500 focus:border-orange-500"
+              className="form-input w-full"
               placeholder="Enter amount"
             />
           </div>
 
           <div className="border-t pt-4">
             <div className="flex justify-between items-center mb-4">
-              <span className="font-semibold">Total:</span>
-              <span className="text-xl font-bold text-orange-500">${calculateTotal()}</span>
+              <span className="font-semibold text-neutral-700">Total:</span>
+              <span className="text-xl font-bold text-primary">${calculateTotal()}</span>
             </div>
             <div className="flex justify-end space-x-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border rounded hover:bg-gray-50"
+                className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+                className="btn-primary"
               >
                 Place Order
               </button>

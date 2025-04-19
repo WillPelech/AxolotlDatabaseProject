@@ -236,13 +236,17 @@ def login():
 
         if user:
             if check_password(password, user.Password):
+                # For customer accounts, use CustomerID
+                # For restaurant accounts, use AccountID
+                account_id = user.CustomerID if account_type == 'customer' else user.AccountID
+                
                 response = {
                     'message': f'Login successful - You are logged in as a {account_type} account',
                     'user': {
                         'username': user.Username,
                         'email': user.Email,
                         'accountType': account_type,
-                        'accountId': user.CustomerID if account_type == 'customer' else user.AccountID,
+                        'accountId': account_id,
                         'isRestaurant': account_type == 'restaurant'
                     }
                 }
@@ -304,6 +308,7 @@ def get_all_restaurants():
                 'Rating': r.Rating,
                 'PhoneNumber': r.PhoneNumber,
                 'Address': r.Address,
+                'AccountID': r.AccountID
             } for r in restaurants]
         })
     except Exception as e:
@@ -487,7 +492,7 @@ def delete_restaurant(id):
         if not restaurant:
             return jsonify({"error": "Restaurant not found"}), 404
             
-        # First delete all associated food items
+        # First delete all associated food items to handle the foreign key constraint
         Food.query.filter_by(RestaurantID=id).delete()
         
         # Then delete the restaurant
@@ -495,7 +500,7 @@ def delete_restaurant(id):
         db.session.commit()
         
         return jsonify({
-            "message": f"Restaurant {id} and all associated food items deleted successfully",
+            "message": f"Restaurant {id} deleted successfully",
             "restaurant": {
                 'RestaurantID': restaurant.RestaurantID,
                 'RestaurantName': restaurant.RestaurantName,
@@ -654,42 +659,42 @@ def create_order():
             }.items() if not value]
             return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
 
-        try:
-            # Get the next OrderID
-            max_order_id = db.session.query(db.func.max(Orders.OrderID)).scalar()
-            next_order_id = 1 if max_order_id is None else max_order_id + 1
+        # Get the next OrderID
+        max_order_id = db.session.query(db.func.max(Orders.OrderID)).scalar()
+        next_order_id = 1 if max_order_id is None else max_order_id + 1
 
-            # Create the order entry with Additional_Costs
-            new_order = Orders(
+        # Create the order entry with Additional_Costs
+        new_order = Orders(
+            OrderID=next_order_id,
+            CustomerID=customer_id,
+            RestaurantID=restaurant_id,
+            PriceTotal=price_total,
+            Additional_Costs=additional_costs
+        )
+        db.session.add(new_order)
+        
+        # Commit the order first to ensure it exists in the database
+        db.session.commit()
+        
+        # Now create FoodOrders entries for each item
+        for item in items:
+            food_order = FoodOrders(
                 OrderID=next_order_id,
-                CustomerID=customer_id,
-                RestaurantID=restaurant_id,
-                PriceTotal=price_total,
-                Additional_Costs=additional_costs
+                FoodID=item['FoodID'],
+                Quantity=item['quantity']
             )
-            db.session.add(new_order)
-            
-            # Create FoodOrders entries for each item
-            for item in items:
-                food_order = FoodOrders(
-                    OrderID=next_order_id,
-                    FoodID=item['FoodID'],
-                    Quantity=item['quantity']
-                )
-                db.session.add(food_order)
-
-            db.session.commit()
-            return jsonify({
-                'message': 'Order created successfully',
-                'orderID': next_order_id
-            }), 201
-
-        except Exception as e:
-            db.session.rollback()
-            print("Database error:", str(e))
-            raise e
+            db.session.add(food_order)
+        
+        # Commit the food orders
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Order created successfully',
+            'orderID': next_order_id
+        }), 201
 
     except Exception as e:
+        db.session.rollback()
         print("Error creating order:", str(e))
         return jsonify({'error': str(e)}), 500
 
@@ -744,6 +749,74 @@ def get_customer_orders(customer_id):
     except Exception as e:
         print("Error fetching orders:", str(e))
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['PUT'])
+def update_food(restaurant_id, food_id):
+    try:
+        # First check if food exists and belongs to the restaurant
+        food = Food.query.filter_by(FoodID=food_id, RestaurantID=restaurant_id).first()
+        
+        if not food:
+            return jsonify({
+                'success': False,
+                'error': 'Food item not found or does not belong to this restaurant'
+            }), 404
+            
+        data = request.get_json()
+        
+        # Update food details
+        food.FoodName = data.get('FoodName', food.FoodName)
+        food.Price = data.get('Price', food.Price)
+        
+        db.session.commit()
+        
+        # Return the updated food item
+        updated_food = {
+            'FoodID': food.FoodID,
+            'FoodName': food.FoodName,
+            'Price': food.Price,
+            'RestaurantID': food.RestaurantID
+        }
+        
+        return jsonify({
+            'success': True,
+            'food': updated_food
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating food: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['DELETE'])
+def delete_food(restaurant_id, food_id):
+    try:
+        # First check if food exists and belongs to the restaurant
+        food = Food.query.filter_by(FoodID=food_id, RestaurantID=restaurant_id).first()
+        
+        if not food:
+            return jsonify({
+                'success': False,
+                'error': 'Food item not found or does not belong to this restaurant'
+            }), 404
+            
+        # Delete the food item
+        db.session.delete(food)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Food item deleted successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting food: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
