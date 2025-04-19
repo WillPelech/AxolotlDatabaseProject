@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import ReviewModal from '../components/ReviewModal';
 
 const Orders = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -31,6 +35,46 @@ const Orders = () => {
 
     fetchOrders();
   }, [user]);
+
+  const handleReviewClick = (restaurantId, restaurantName) => {
+    setSelectedRestaurant({ id: restaurantId, name: restaurantName });
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSubmitted = async ({ rating, content }) => {
+    try {
+      const now = new Date();
+      const formattedDate = now.toISOString().slice(0, 19);
+
+      const response = await fetch('http://localhost:5000/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: user.accountId,
+          restaurantId: selectedRestaurant.id,
+          rating: rating,
+          content: content,
+          date: formattedDate
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create review');
+      }
+
+      // Close the modal and show success message
+      setShowReviewModal(false);
+      setSelectedRestaurant(null);
+      setSuccessMessage('Review submitted successfully!');
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -66,6 +110,14 @@ const Orders = () => {
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">My Orders</h1>
+        
+        {error && (
+          <div className="mb-4 text-red-600 text-center">{error}</div>
+        )}
+        
+        {successMessage && (
+          <div className="mb-4 text-green-600 text-center">{successMessage}</div>
+        )}
         
         <div className="space-y-6">
           {orders.map((order) => (
@@ -103,11 +155,33 @@ const Orders = () => {
                     </div>
                   ))}
                 </div>
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => handleReviewClick(order.RestaurantID, order.RestaurantName)}
+                    className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+                  >
+                    Write Review
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {selectedRestaurant && (
+        <ReviewModal
+          isOpen={showReviewModal}
+          onClose={() => {
+            setShowReviewModal(false);
+            setSelectedRestaurant(null);
+          }}
+          restaurantId={selectedRestaurant.id}
+          restaurantName={selectedRestaurant.name}
+          customerId={user.accountId}
+          onSubmit={handleReviewSubmitted}
+        />
+      )}
     </div>
   );
 };

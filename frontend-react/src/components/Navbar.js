@@ -57,12 +57,20 @@ function Navbar() {
                                 </Link>
                             )}
                             {user && user.accountType === 'customer' && (
-                                <Link
-                                    to="/orders"
-                                    className="border-transparent text-neutral-600 hover:text-primary inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                                >
-                                    My Orders
-                                </Link>
+                                <>
+                                    <Link
+                                        to="/orders"
+                                        className="border-transparent text-neutral-600 hover:text-primary inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                                    >
+                                        My Orders
+                                    </Link>
+                                    <Link
+                                        to="/my-reviews"
+                                        className="border-transparent text-neutral-600 hover:text-primary inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                                    >
+                                        My Reviews
+                                    </Link>
+                                </>
                             )}
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function ManageRestaurants() {
@@ -115,6 +115,12 @@ function ManageRestaurants() {
                 <p className="text-neutral-600 mb-2">{restaurant.Category}</p>
                 <p className="text-neutral-600 mb-4">{restaurant.Address}</p>
                 <div className="flex justify-end space-x-3">
+                  <Link
+                    to={`/reviews/${restaurant.RestaurantID}`}
+                    className="btn-secondary px-4 rounded-md inline-flex items-center"
+                  >
+                    View Reviews
+                  </Link>
                   <button
                     onClick={() => navigate(`/edit-restaurant/${restaurant.RestaurantID}`)}
                     className="btn-secondary"

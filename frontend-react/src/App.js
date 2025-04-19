@@ -15,75 +15,51 @@ import CreateRestaurant from './pages/CreateRestaurant';
 import ManageRestaurants from './pages/ManageRestaurants';
 import EditRestaurant from './pages/EditRestaurant';
 import Orders from './pages/Orders';
+import Reviews from './pages/Reviews';
+import MyReviews from './pages/MyReviews';
 import './App.css';
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <div className="App">
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-neutral-50">
           <Navbar />
-          <div className="container">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/restaurant/:id" element={<Restaurant />} />
-              <Route path="/suggested" element={<Suggested />} />
-              <Route path="/map" element={<Map />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/create-restaurant"
-                element={
-                  <ProtectedRoute requireRestaurantOwner>
-                    <CreateRestaurant />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/manage-restaurants"
-                element={
-                  <ProtectedRoute requireRestaurantOwner>
-                    <ManageRestaurants />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/edit-restaurant/:id"
-                element={
-                  <ProtectedRoute requireRestaurantOwner>
-                    <EditRestaurant />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/restaurant-list"
-                element={
-                  <ProtectedRoute requireRestaurantOwner>
-                    <RestaurantList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/orders"
-                element={
-                  <ProtectedRoute>
-                    <Orders />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </div>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/restaurant/:id" element={<Restaurant />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/manage-restaurants" element={<ManageRestaurants />} />
+            <Route path="/create-restaurant" element={<CreateRestaurant />} />
+            <Route path="/edit-restaurant/:id" element={<EditRestaurant />} />
+            <Route path="/reviews/:restaurantId" element={<Reviews />} />
+            <Route path="/my-reviews" element={<MyReviews />} />
+            <Route path="/suggested" element={<Suggested />} />
+            <Route path="/map" element={<Map />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant-list"
+              element={
+                <ProtectedRoute requireRestaurantOwner>
+                  <RestaurantList />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/restaurants/:id" element={<Restaurant />} />
+            <Route path="/restaurants/:id/reviews" element={<Reviews />} />
+          </Routes>
         </div>
-      </AuthProvider>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 }
 
