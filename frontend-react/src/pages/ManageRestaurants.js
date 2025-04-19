@@ -12,29 +12,31 @@ function ManageRestaurants() {
 
   useEffect(() => {
     fetchRestaurants();
-  }, []);
+  }, [user]);
 
   const fetchRestaurants = async () => {
+    setError('');
+    setSuccessMessage('');
     try {
-      if (!user || !user.accountId) {
-        setError('Please log in to manage restaurants');
+      if (!user || !user.accountId || !user.isRestaurant) {
+        setError('Please log in as a restaurant owner to manage restaurants');
+        setRestaurants([]);
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/restaurants');
+      const response = await fetch(`http://localhost:5000/api/restaurants/account/${user.accountId}`);
       const data = await response.json();
       
       if (response.ok) {
-        // Filter restaurants to show only those owned by the current user
-        const userRestaurants = data.restaurants.filter(
-          restaurant => restaurant.AccountID === parseInt(user.accountId)
-        );
-        setRestaurants(userRestaurants);
+        setRestaurants(data.restaurants || []);
       } else {
-        setError('Failed to fetch restaurants');
+        setError(data.error || 'Failed to fetch restaurants');
+        setRestaurants([]);
       }
     } catch (err) {
+      console.error("Fetch restaurants error:", err);
       setError('Error connecting to the server');
+      setRestaurants([]);
     }
   };
 

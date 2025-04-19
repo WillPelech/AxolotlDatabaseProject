@@ -413,6 +413,26 @@ def get_restaurant_by_id(id):
         print(f"Error fetching restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/restaurants/account/<int:account_id>', methods=['GET'])
+def get_restaurants_by_account(account_id):
+    """Fetches restaurants associated with a specific restaurant account ID."""
+    try:
+        restaurants = Restaurant.query.filter_by(AccountID=account_id).all()
+        return jsonify({
+            "restaurants": [{
+                'RestaurantID': r.RestaurantID,
+                'RestaurantName': r.RestaurantName,
+                'Category': r.Category,
+                'Rating': r.Rating,
+                'PhoneNumber': r.PhoneNumber,
+                'Address': r.Address,
+                'AccountID': r.AccountID # Include AccountID for verification if needed
+            } for r in restaurants]
+        })
+    except Exception as e:
+        print(f"Error fetching restaurants for account {account_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/restaurants', methods=['POST'])
 def create_restaurant():
     try:
@@ -495,28 +515,48 @@ def delete_restaurant(id):
         if not restaurant:
             return jsonify({"error": "Restaurant not found"}), 404
             
-        # First delete all associated food items
-        Food.query.filter_by(RestaurantID=id).delete()
+        # Get IDs of food items associated with this restaurant
+        food_items = Food.query.filter_by(RestaurantID=id).all()
+        food_ids = [item.FoodID for item in food_items]
+
+        # 1. Delete associated FoodOrders (depends on Food and Orders)
+        if food_ids:
+            FoodOrders.query.filter(FoodOrders.FoodID.in_(food_ids)).delete(synchronize_session=False)
         
-        # Then delete the restaurant
+        # 2. Delete associated Orders (depends on Restaurant)
+        Orders.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
+            
+        # 3. Delete associated Reviews (depends on Restaurant)
+        Review.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
+        
+        # 4. Delete associated FrontPage entries (depends on Restaurant)
+        FrontPage.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
+        
+        # 5. Delete associated Food items (depends on Restaurant)
+        if food_ids:
+             Food.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
+        
+        # 6. Finally, delete the restaurant itself
         db.session.delete(restaurant)
+        
+        # Commit all changes
         db.session.commit()
         
+        deleted_restaurant_data = {
+            'RestaurantID': id,
+            'RestaurantName': restaurant.RestaurantName 
+        }
+        
         return jsonify({
-            "message": f"Restaurant {id} and all associated food items deleted successfully",
-            "restaurant": {
-                'RestaurantID': restaurant.RestaurantID,
-                'RestaurantName': restaurant.RestaurantName,
-                'Category': restaurant.Category,
-                'Rating': restaurant.Rating,
-                'PhoneNumber': restaurant.PhoneNumber,
-                'Address': restaurant.Address
-            }
+            "message": f"Restaurant '{deleted_restaurant_data['RestaurantName']}' (ID: {id}) and all associated data deleted successfully.",
+            "restaurant": deleted_restaurant_data
         })
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting restaurant: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error deleting restaurant ID {id}: {str(e)}")
+        import traceback
+        traceback.print_exc() 
+        return jsonify({"error": f"An error occurred while deleting restaurant ID {id}."}), 500
 
 @app.route('/api/customers/<int:id>/restaurants', methods=['GET'])
 def get_reviewed_restaurants(id):
