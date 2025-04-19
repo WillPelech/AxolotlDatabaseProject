@@ -388,6 +388,82 @@ def create_food(restaurant_id):
             'error': str(e)
         }), 500
 
+@app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['PUT'])
+def update_food(restaurant_id, food_id):
+    """Updates a specific food item for a given restaurant."""
+    try:
+        food_item = Food.query.filter_by(FoodID=food_id, RestaurantID=restaurant_id).first()
+        
+        if not food_item:
+            return jsonify({'success': False, 'error': 'Food item not found'}), 404
+            
+        data = request.get_json()
+        food_name = data.get('FoodName')
+        price = data.get('Price')
+
+        if food_name:
+            food_item.FoodName = food_name
+        if price is not None:
+            try:
+                food_item.Price = float(price)
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Invalid price format'}), 400
+
+        db.session.commit()
+        
+        updated_food_data = {
+            'FoodID': food_item.FoodID,
+            'FoodName': food_item.FoodName,
+            'Price': food_item.Price,
+            'RestaurantID': food_item.RestaurantID
+        }
+        
+        return jsonify({
+            'success': True,
+            'message': 'Food item updated successfully',
+            'food': updated_food_data
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating food ID {food_id} for restaurant ID {restaurant_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['DELETE'])
+def delete_food(restaurant_id, food_id):
+    """Deletes a specific food item for a given restaurant."""
+    try:
+        food_item = Food.query.filter_by(FoodID=food_id, RestaurantID=restaurant_id).first()
+        
+        if not food_item:
+            return jsonify({'success': False, 'error': 'Food item not found'}), 404
+        
+        # Store name before deleting
+        food_name = food_item.FoodName
+
+        # Delete associated FoodOrders first
+        FoodOrders.query.filter_by(FoodID=food_id).delete(synchronize_session=False)
+        
+        # Delete the food item
+        db.session.delete(food_item)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Food item \'{food_name}\' (ID: {food_id}) deleted successfully.' 
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting food ID {food_id} for restaurant ID {restaurant_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'An error occurred while deleting food item ID {food_id}.'
+        }), 500
+
 @app.route('/api/restaurants/<int:id>', methods=['GET'])
 def get_restaurant_by_id(id):
     try:
