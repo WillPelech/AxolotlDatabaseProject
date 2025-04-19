@@ -106,6 +106,12 @@ class FrontPage(db.Model):
     PushPoints = db.Column(db.Integer, nullable=False)
     Date = db.Column(db.DateTime, nullable=False)
 
+class Photo(db.Model):
+    __tablename__ = 'Photo'
+    PhotoID = db.Column(db.Integer, primary_key = True)
+    FoodID = db.Column(db.Integer, db.ForeignKey('Food.FoodID'))
+    PhotoImage = db.Column(db.Text, nullable=False)
+
 def hash_password(password):
     # Ensure the password is a string and encode it consistently
     password_str = str(password).encode('utf-8')
@@ -834,10 +840,10 @@ def create_review():
         # Create new review
         new_review = Review(
             ReviewID=next_id,
-            CustomerID=data['customerId'],
-            RestaurantID=data['restaurantId'],
-            Rating=data['rating'],
-            ReviewContent=data['content'],
+            CustomerID=data['CustomerID'],
+            RestaurantID=data['RestaurantID'],
+            Rating=data['Rating'],
+            ReviewContent=data['Content'],
             Date=review_date
         )
         db.session.add(new_review)
@@ -966,6 +972,69 @@ def delete_review(review_id):
         db.session.rollback()
         print(f"Error deleting review: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/restaurants/<int:restaurant_id>/photos', methods=['GET'])
+def get_restaurant_photos(restaurant_id):
+    try:
+        photos = Photo.query.filter_by(RestaurantID=restaurant_id).all()
+        
+        photolist = [{
+            'PhotoID': f.PhotoID,
+            'PhotoImage': f.PhotoImage
+        } for f in photos]
+        
+        print(f"Retrieved {len(photolist)} photos for restaurant {restaurant_id}")  # Add logging
+        
+        return jsonify({
+            'success': True,
+            'photolist': photolist
+        })
+    except Exception as e:
+        print(f"Error fetching photos: {str(e)}")  # Add logging
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/restaurants/<int:restaurant_id>/photos', methods=['POST'])
+def update_restaurant_photos(restaurant_id):
+    try:
+        data = request.get_json()
+        photo_image=data.get('PhotoImage')
+
+        # Get the next FoodID
+        max_photo_id = db.session.query(db.func.max(Photo.PhotoID)).scalar()
+        next_photo_id = 1 if max_photo_id is None else max_photo_id + 1
+
+        # Create new food item
+        new_photo = Photo(
+            FoodID=next_photo_id,
+            RestaurantID=restaurant_id,
+            PhotoImage=photo_image
+        )
+        db.session.add(new_photo)
+        db.session.commit()
+        
+        # Return the created food item
+        new_photo_dict = {
+            'PhotoID': new_photo.Photo,
+            'RestaurantID': new_photo.RestaurantID,
+            'PhotoImage':new_photo.PhotoImage
+        }
+        
+        return jsonify({
+            'success': True,
+            'food': new_photo_dict
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating photo: {str(e)}")  # Add logging
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
