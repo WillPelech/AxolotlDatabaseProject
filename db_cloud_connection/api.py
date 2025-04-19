@@ -8,6 +8,8 @@ import jwt
 from datetime import datetime, timezone, timedelta
 from flask_cors import cross_origin
 import pymysql
+import base64
+
 
 # Load environment variables
 load_dotenv()
@@ -97,7 +99,7 @@ class Review(db.Model):
     CustomerID = db.Column(db.Integer, db.ForeignKey('Customer.CustomerID'), nullable=False)
     RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), nullable=False)
     Rating = db.Column(db.Integer, nullable=False)
-    ReviewContent = db.Column(db.Text, nullable=True)
+    Comment = db.Column(db.Text, nullable=True)
     Date = db.Column(db.DateTime, nullable=False)
 
 class FrontPage(db.Model):
@@ -236,17 +238,13 @@ def login():
 
         if user:
             if check_password(password, user.Password):
-                # For customer accounts, use CustomerID
-                # For restaurant accounts, use AccountID
-                account_id = user.CustomerID if account_type == 'customer' else user.AccountID
-                
                 response = {
                     'message': f'Login successful - You are logged in as a {account_type} account',
                     'user': {
                         'username': user.Username,
                         'email': user.Email,
                         'accountType': account_type,
-                        'accountId': account_id,
+                        'accountId': user.CustomerID if account_type == 'customer' else user.AccountID,
                         'isRestaurant': account_type == 'restaurant'
                     }
                 }
@@ -308,7 +306,6 @@ def get_all_restaurants():
                 'Rating': r.Rating,
                 'PhoneNumber': r.PhoneNumber,
                 'Address': r.Address,
-                'AccountID': r.AccountID
             } for r in restaurants]
         })
     except Exception as e:
@@ -492,7 +489,7 @@ def delete_restaurant(id):
         if not restaurant:
             return jsonify({"error": "Restaurant not found"}), 404
             
-        # First delete all associated food items to handle the foreign key constraint
+        # First delete all associated food items
         Food.query.filter_by(RestaurantID=id).delete()
         
         # Then delete the restaurant
@@ -500,7 +497,7 @@ def delete_restaurant(id):
         db.session.commit()
         
         return jsonify({
-            "message": f"Restaurant {id} deleted successfully",
+            "message": f"Restaurant {id} and all associated food items deleted successfully",
             "restaurant": {
                 'RestaurantID': restaurant.RestaurantID,
                 'RestaurantName': restaurant.RestaurantName,
@@ -659,42 +656,42 @@ def create_order():
             }.items() if not value]
             return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
 
-        # Get the next OrderID
-        max_order_id = db.session.query(db.func.max(Orders.OrderID)).scalar()
-        next_order_id = 1 if max_order_id is None else max_order_id + 1
+        try:
+            # Get the next OrderID
+            max_order_id = db.session.query(db.func.max(Orders.OrderID)).scalar()
+            next_order_id = 1 if max_order_id is None else max_order_id + 1
 
-        # Create the order entry with Additional_Costs
-        new_order = Orders(
-            OrderID=next_order_id,
-            CustomerID=customer_id,
-            RestaurantID=restaurant_id,
-            PriceTotal=price_total,
-            Additional_Costs=additional_costs
-        )
-        db.session.add(new_order)
-        
-        # Commit the order first to ensure it exists in the database
-        db.session.commit()
-        
-        # Now create FoodOrders entries for each item
-        for item in items:
-            food_order = FoodOrders(
+            # Create the order entry with Additional_Costs
+            new_order = Orders(
                 OrderID=next_order_id,
-                FoodID=item['FoodID'],
-                Quantity=item['quantity']
+                CustomerID=customer_id,
+                RestaurantID=restaurant_id,
+                PriceTotal=price_total,
+                Additional_Costs=additional_costs
             )
-            db.session.add(food_order)
-        
-        # Commit the food orders
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Order created successfully',
-            'orderID': next_order_id
-        }), 201
+            db.session.add(new_order)
+            
+            # Create FoodOrders entries for each item
+            for item in items:
+                food_order = FoodOrders(
+                    OrderID=next_order_id,
+                    FoodID=item['FoodID'],
+                    Quantity=item['quantity']
+                )
+                db.session.add(food_order)
+
+            db.session.commit()
+            return jsonify({
+                'message': 'Order created successfully',
+                'orderID': next_order_id
+            }), 201
+
+        except Exception as e:
+            db.session.rollback()
+            print("Database error:", str(e))
+            raise e
 
     except Exception as e:
-        db.session.rollback()
         print("Error creating order:", str(e))
         return jsonify({'error': str(e)}), 500
 
@@ -750,222 +747,15 @@ def get_customer_orders(customer_id):
         print("Error fetching orders:", str(e))
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['PUT'])
-def update_food(restaurant_id, food_id):
+def encodeBase64(image_path):
     try:
-        # First check if food exists and belongs to the restaurant
-        food = Food.query.filter_by(FoodID=food_id, RestaurantID=restaurant_id).first()
-        
-        if not food:
-            return jsonify({
-                'success': False,
-                'error': 'Food item not found or does not belong to this restaurant'
-            }), 404
-            
-        data = request.get_json()
-        
-        # Update food details
-        food.FoodName = data.get('FoodName', food.FoodName)
-        food.Price = data.get('Price', food.Price)
-        
-        db.session.commit()
-        
-        # Return the updated food item
-        updated_food = {
-            'FoodID': food.FoodID,
-            'FoodName': food.FoodName,
-            'Price': food.Price,
-            'RestaurantID': food.RestaurantID
-        }
-        
-        return jsonify({
-            'success': True,
-            'food': updated_food
-        })
+        with open(image_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read().decode())
+            return encoded_string
     except Exception as e:
-        db.session.rollback()
-        print(f"Error updating food: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        print(f"Image was unable to be encoded:{str(e)}")
+        return None
 
-@app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['DELETE'])
-def delete_food(restaurant_id, food_id):
-    try:
-        # First check if food exists and belongs to the restaurant
-        food = Food.query.filter_by(FoodID=food_id, RestaurantID=restaurant_id).first()
-        
-        if not food:
-            return jsonify({
-                'success': False,
-                'error': 'Food item not found or does not belong to this restaurant'
-            }), 404
-            
-        # Delete the food item
-        db.session.delete(food)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Food item deleted successfully'
-        })
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error deleting food: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/reviews', methods=['POST'])
-def create_review():
-    try:
-        data = request.get_json()
-        
-        # Get the next ReviewID
-        max_id = db.session.query(db.func.max(Review.ReviewID)).scalar()
-        next_id = 1 if max_id is None else max_id + 1
-
-        # Parse the date string into a Python datetime object
-        date_str = data['date']
-        review_date = datetime.strptime(date_str.split('.')[0], '%Y-%m-%dT%H:%M:%S')
-
-        # Create new review
-        new_review = Review(
-            ReviewID=next_id,
-            CustomerID=data['customerId'],
-            RestaurantID=data['restaurantId'],
-            Rating=data['rating'],
-            ReviewContent=data['content'],
-            Date=review_date
-        )
-        db.session.add(new_review)
-        db.session.commit()
-        
-        # Get customer name for the response
-        customer = Customer.query.get(data['customerId'])
-        
-        review_data = {
-            'ReviewID': new_review.ReviewID,
-            'CustomerID': new_review.CustomerID,
-            'CustomerName': customer.Username if customer else 'Anonymous',
-            'RestaurantID': new_review.RestaurantID,
-            'Rating': float(new_review.Rating),
-            'ReviewContent': new_review.ReviewContent,
-            'Date': new_review.Date.isoformat()
-        }
-        
-        return jsonify({
-            'message': 'Review created successfully',
-            'review': review_data
-        }), 201
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error creating review: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/restaurants/<int:restaurant_id>/reviews', methods=['GET'])
-def get_restaurant_reviews(restaurant_id):
-    try:
-        # Join Review with Customer to get customer names
-        reviews = db.session.query(
-            Review, Customer.Username
-        ).join(
-            Customer, Review.CustomerID == Customer.CustomerID
-        ).filter(
-            Review.RestaurantID == restaurant_id
-        ).order_by(Review.Date.desc()).all()
-        
-        reviews_data = [{
-            'ReviewID': review.ReviewID,
-            'CustomerID': review.CustomerID,
-            'CustomerName': username,
-            'RestaurantID': review.RestaurantID,
-            'Rating': float(review.Rating),
-            'ReviewContent': review.ReviewContent,
-            'Date': review.Date.isoformat()
-        } for review, username in reviews]
-        
-        return jsonify({
-            'reviews': reviews_data
-        })
-    except Exception as e:
-        print(f"Error fetching reviews: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/customers/<int:id>/reviews', methods=['GET'])
-def get_customer_reviews(id):
-    try:
-        # Get reviews by the customer
-        reviews = db.session.query(Review, Restaurant).join(
-            Restaurant, Review.RestaurantID == Restaurant.RestaurantID
-        ).filter(Review.CustomerID == id).order_by(Review.Date.desc()).all()
-        
-        return jsonify({
-            "reviews": [{
-                'ReviewID': r[0].ReviewID,
-                'RestaurantID': r[0].RestaurantID,
-                'RestaurantName': r[1].RestaurantName,
-                'Rating': r[0].Rating,
-                'ReviewContent': r[0].ReviewContent,
-                'Date': r[0].Date.isoformat() if r[0].Date else None
-            } for r in reviews]
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/reviews/<int:review_id>', methods=['PUT'])
-def update_review(review_id):
-    try:
-        data = request.get_json()
-        review = Review.query.get(review_id)
-        
-        if not review:
-            return jsonify({'error': 'Review not found'}), 404
-
-        # Update review fields
-        if 'rating' in data:
-            review.Rating = data['rating']
-        if 'content' in data:
-            review.ReviewContent = data['content']
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Review updated successfully',
-            'review': {
-                'ReviewID': review.ReviewID,
-                'CustomerID': review.CustomerID,
-                'RestaurantID': review.RestaurantID,
-                'Rating': review.Rating,
-                'ReviewContent': review.ReviewContent,
-                'Date': review.Date.isoformat()
-            }
-        })
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error updating review: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/reviews/<int:review_id>', methods=['DELETE'])
-def delete_review(review_id):
-    try:
-        review = Review.query.get(review_id)
-        
-        if not review:
-            return jsonify({'error': 'Review not found'}), 404
-
-        db.session.delete(review)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Review deleted successfully'
-        })
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error deleting review: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -12,7 +12,7 @@ const Home = () => {
   useEffect(() => {
     const fetchFrontPageRestaurants = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/restaurants/front-page');
+        const response = await fetch('http://localhost:5000//api/restaurants/front-page');
         if (!response.ok) {
           throw new Error('Failed to fetch restaurants');
         }
