@@ -44,7 +44,11 @@ const Orders = () => {
   const handleReviewSubmitted = async ({ rating, content }) => {
     try {
       const now = new Date();
-      const formattedDate = now.toISOString().slice(0, 19);
+      const formattedDate = now.toISOString().slice(0, 19).replace('T', ' ');
+
+      if (!selectedRestaurant || !user || !user.accountId) {
+        throw new Error("Missing data required to submit review.");
+      }
 
       const response = await fetch('http://localhost:5000/api/reviews', {
         method: 'POST',
@@ -52,11 +56,11 @@ const Orders = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          customerId: user.accountId,
-          restaurantId: selectedRestaurant.id,
-          rating: rating,
-          content: content,
-          date: formattedDate
+          CustomerID: user.accountId,
+          RestaurantID: selectedRestaurant.id,
+          Rating: rating,
+          ReviewContent: content,
+          Date: formattedDate
         }),
       });
 
@@ -72,7 +76,9 @@ const Orders = () => {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err.message);
+      console.error("Review submission error:", err);
+      setError(`Failed to submit review: ${err.message}`);
+      setTimeout(() => setError(''), 5000);
     }
   };
 

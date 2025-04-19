@@ -99,7 +99,7 @@ class Review(db.Model):
     CustomerID = db.Column(db.Integer, db.ForeignKey('Customer.CustomerID'), nullable=False)
     RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'), nullable=False)
     Rating = db.Column(db.Integer, nullable=False)
-    Comment = db.Column(db.Text, nullable=True)
+    ReviewContent = db.Column(db.Text, nullable=True)
     Date = db.Column(db.DateTime, nullable=False)
 
 class FrontPage(db.Model):
@@ -782,13 +782,24 @@ def create_review():
     try:
         data = request.get_json()
         
+        # Explicitly check for all required keys first
+        required_keys = ['CustomerID', 'RestaurantID', 'Rating', 'ReviewContent', 'Date']
+        missing_keys = [key for key in required_keys if key not in data]
+        if missing_keys:
+            raise KeyError(f"Missing required key(s): {', '.join(missing_keys)}")
+
         # Get the next ReviewID
         max_id = db.session.query(db.func.max(Review.ReviewID)).scalar()
         next_id = 1 if max_id is None else max_id + 1
 
-        # Parse the date string into a Python datetime object
-        date_str = data['date']
-        review_date = datetime.strptime(date_str.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+        # Parse the date string
+        date_str = data['Date']
+        try:
+             # Use the format sent by the frontend
+            review_date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError as ve:
+            # Raise a more informative error if parsing fails
+            raise ValueError(f"Invalid date format for '{date_str}'. Expected 'YYYY-MM-DD HH:MM:SS'. Error: {ve}")
 
         # Create new review
         new_review = Review(
@@ -796,21 +807,22 @@ def create_review():
             CustomerID=data['CustomerID'],
             RestaurantID=data['RestaurantID'],
             Rating=data['Rating'],
-            ReviewContent=data['Content'],
+            ReviewContent=data['ReviewContent'],
             Date=review_date
         )
         db.session.add(new_review)
         db.session.commit()
         
-        # Get customer name for the response
-        customer = Customer.query.get(data['customerId'])
+        # Get customer name for the response (Use CustomerID)
+        customer = Customer.query.get(data['CustomerID']) 
         
         review_data = {
             'ReviewID': new_review.ReviewID,
             'CustomerID': new_review.CustomerID,
-            'CustomerName': customer.Username if customer else 'Anonymous',
+            # Check if customer exists before accessing Username
+            'CustomerName': customer.Username if customer else 'Unknown Customer', 
             'RestaurantID': new_review.RestaurantID,
-            'Rating': float(new_review.Rating),
+            'Rating': float(new_review.Rating), # Ensure Rating is float/numeric
             'ReviewContent': new_review.ReviewContent,
             'Date': new_review.Date.isoformat()
         }
@@ -819,10 +831,22 @@ def create_review():
             'message': 'Review created successfully',
             'review': review_data
         }), 201
+        
+    except KeyError as e:
+         print(f"Error creating review (KeyError): {str(e)}")
+         # Return the specific key error message
+         return jsonify({'error': str(e)}), 400 
+    except ValueError as e:
+         print(f"Error creating review (ValueError): {str(e)}")
+         # Return the specific value error message (e.g., invalid date format)
+         return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
-        print(f"Error creating review: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        # Log the full traceback for unexpected errors
+        print(f"Unexpected error creating review: {str(e)}")
+        import traceback
+        traceback.print_exc() 
+        return jsonify({'error': 'An unexpected error occurred while creating the review.'}), 500
 
 @app.route('/api/restaurants/<int:restaurant_id>/reviews', methods=['GET'])
 def get_restaurant_reviews(restaurant_id):
@@ -872,6 +896,10 @@ def get_customer_reviews(id):
             } for r in reviews]
         })
     except Exception as e:
+        # Add more specific logging
+        print(f"Error fetching customer reviews for ID {id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/reviews/<int:review_id>', methods=['PUT'])
