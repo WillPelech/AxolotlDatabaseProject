@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { restaurantApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 function Map() {
+  // const addressMap = new Map();
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [error, setError] = useState(null);
   const [reviewRestaurants, setReviewRestaurants] = useState([]);
   const { user } = useAuth();
+  let sampleMarkers = [
+    {
+      position: {lat: 0, lng: 0},
+          title: "",
+          rating: 0,
+    }
+  ];
   useEffect(() => {
     // Initialize Google Maps
     const fetchReviewedRestaurants = async () => {
       try{
-        console.log(user.accountId)
         const data = await restaurantApi.getReviewedRestaurants(user.accountId);
         setReviewRestaurants(data.restaurants);
         console.log(data.restaurants)
@@ -20,7 +28,28 @@ function Map() {
         setError(err.message);
       };
       console.log(reviewRestaurants);
+      reviewRestaurants.forEach(async function(r) {
+        const Geocoder = new window.google.maps.Geocoder();
+        const coord = await Geocoder.geocode({address:r.Address})
+        // console.log(coord.results[0].navigation_points[0].location)
+        r.long = coord.results[0].navigation_points[0].location.longitude;
+        r.lat = coord.results[0].navigation_points[0].location.latitude;
+        console.log(`latitude: ${r.lat} longitude: ${r.long}`);
+        // sampleMarkers.push({
+        //   position: {lat: r.lat, lng: r.long},
+        //   title: r.RestaurantName,
+        //   rating: r.Rating,
+        // })
+      });
     }
+
+    // const getRestaurantLongLat = async (array) => {
+    //   array.forEach(async function(r) {
+    //     const Geocoder = new window.google.maps.Geocoder();
+    //     const coord = await Geocoder.geocode({address:r.Address})
+    //     console.log(r.Address)
+    //   });
+    // }
     fetchReviewedRestaurants();
     const initMap = () => {
       try {
@@ -33,32 +62,39 @@ function Map() {
         setMap(newMap);
 
         // Add sample NYC restaurant markers
-        const sampleMarkers = [
-          {
-            position: { lat: 40.7580, lng: -73.9855 }, // Times Square
-            title: 'Times Square Bistro',
-            rating: 4.5,
-            price: '$$$',
-          },
-          {
-            position: { lat: 40.7527, lng: -73.9772 }, // Grand Central
-            title: 'Grand Central Deli',
-            rating: 4.2,
-            price: '$$',
-          },
-          {
-            position: { lat: 40.7614, lng: -73.9776 }, // Rockefeller Center
-            title: 'Rockefeller Cafe',
-            rating: 4.7,
-            price: '$$$',
-          },
-          {
-            position: { lat: 40.7484, lng: -73.9857 }, // Empire State Building
-            title: 'Empire State Restaurant',
-            rating: 4.3,
-            price: '$$$',
-          }
-        ];
+        // let sampleMarkers = [
+        //   {
+        //     position: { lat: 40.7580, lng: -73.9855 }, // Times Square
+        //     title: 'Times Square Bistro',
+        //     rating: 4.5,
+        //     price: '$$$',
+        //   },
+        //   {
+        //     position: { lat: 40.7527, lng: -73.9772 }, // Grand Central
+        //     title: 'Grand Central Deli',
+        //     rating: 4.2,
+        //     price: '$$',
+        //   },
+        //   {
+        //     position: { lat: 40.7614, lng: -73.9776 }, // Rockefeller Center
+        //     title: 'Rockefeller Cafe',
+        //     rating: 4.7,
+        //     price: '$$$',
+        //   },
+        //   {
+        //     position: { lat: 40.7484, lng: -73.9857 }, // Empire State Building
+        //     title: 'Empire State Restaurant',
+        //     rating: 4.3,
+        //     price: '$$$',
+        //   }
+        // ];
+        // reviewRestaurants.forEach(function(r){
+        //   sampleMarkers.push({
+        //     position: {lat: r.lat, lng: r.long},
+        //     title: r.RestaurantName,
+        //     rating: r.Rating,
+        //   })
+        // })
 
         const newMarkers = sampleMarkers.map((marker) => {
           const googleMarker = new window.google.maps.Marker({
@@ -141,8 +177,10 @@ function Map() {
               <div className="border-b pb-4">
               <h3 className="font-semibold">{restaurant.RestaurantName}</h3>
               <p className="text-sm text-gray-600">Rating: {restaurant.Rating} ★</p>
-              <p className="text-sm text-gray-600">Price: $$$</p>
               <p className="text-sm text-gray-500">Location: {restaurant.Address}/</p>
+              <Link to={`/restaurant/${restaurant.RestaurantID}`} className="view-button">
+                                View Details
+              </Link>
             </div>
             ))}
           </div>
