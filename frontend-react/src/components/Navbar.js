@@ -70,6 +70,12 @@ function Navbar() {
                                     >
                                         My Reviews
                                     </Link>
+                                    <Link
+                                        to="/addresses"
+                                        className="border-transparent text-neutral-600 hover:text-primary inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                                    >
+                                        My Addresses
+                                    </Link>
                                 </>
                             )}
                         </div>

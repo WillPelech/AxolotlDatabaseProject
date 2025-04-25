@@ -17,6 +17,7 @@ import EditRestaurant from './pages/EditRestaurant';
 import Orders from './pages/Orders';
 import Reviews from './pages/Reviews';
 import MyReviews from './pages/MyReviews';
+import AddressManagement from './pages/AddressManagement';
 import './App.css';
 
 function App() {
@@ -56,6 +57,14 @@ function App() {
             />
             <Route path="/restaurants/:id" element={<Restaurant />} />
             <Route path="/restaurants/:id/reviews" element={<Reviews />} />
+            <Route 
+              path="/addresses"
+              element={
+                <ProtectedRoute>
+                  <AddressManagement />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </div>
       </Router>

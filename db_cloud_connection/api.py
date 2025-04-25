@@ -51,7 +51,7 @@ class Customer(db.Model):
 class Customer_Address(db.Model):
     __tablename__ = 'Customer_Address'
     CustomerID = db.Column(db.Integer, db.ForeignKey('Customer.CustomerID'), primary_key = True)
-    Customer_Address = db.Column(db.String(255), primary_key = True)
+    Address = db.Column(db.String(255), primary_key = True)
 
 class RestaurantAccount(db.Model):
     __tablename__ = 'Restaurant_Account'
@@ -768,80 +768,119 @@ def get_reviewed_restaurants(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/customers/address', methods=['GET']) # Changed route
+@app.route('/api/customers/address', methods=['GET']) # Route uses JWT for customer ID
 @require_customer
-def get_customer_address(): # Removed id parameter
+def get_customer_address():
+    customer_id = g.current_user['id'] # Use 'id' instead of 'sub'
     try:
-        customer_id = g.current_user['id'] # Get ID from token context
-        customer = Customer_Address.query.get(customer_id)
-
-        if customer:
-            addresses = Customer_Address.query.filter_by(CustomerID = customer_id).all()
-            if addresses:
-                return jsonify({
-                    "address": a.address
-                }for a in addresses)
-            else:
-                return jsonify({
-                    "Error": "Customer has no addresses"
-                }),400
-        else:
-            return jsonify({
-                "Error": "Customer not found"
-            }),404
+        addresses = Customer_Address.query.filter_by(CustomerID=customer_id).all()
+        # Extract just the address strings
+        address_list = [addr.Address for addr in addresses]
+        return jsonify(address_list), 200
     except Exception as e:
-        # Add more specific logging
-        print(f"Error fetching customer addresses for ID {customer_id}: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error fetching addresses for customer {customer_id}: {str(e)}")
+        return jsonify({"error": "Failed to retrieve addresses"}), 500
 
-@app.route('/api/customers/address', methods=['POST']) # Changed route
+@app.route('/api/customers/address', methods=['POST']) # Route uses JWT for customer ID
 @require_customer
-def create_customer_address(): # Removed id parameter
+def create_customer_address():
+    customer_id = g.current_user['id'] # Use 'id' instead of 'sub'
+    data = request.json
+    address_text = data.get('address')
+
+    if not address_text:
+        return jsonify({"error": "Address text is required"}), 400
+
     try:
-        customer_id = g.current_user['id']
-        customer = Customer_Address.query.get(customer_id)
+        # Check if address already exists for this customer
+        existing_address = Customer_Address.query.filter_by(CustomerID=customer_id, Address=address_text).first()
+        if existing_address:
+            return jsonify({"error": "Address already exists for this customer"}), 409 # Conflict
 
-        if customer:
-            input_address = request.json['address']
-            if input_address & Customer_Address.query.get(input_address) is None:
-                newCustomerAddress = Customer(customer_id,input_address)
-                db.session.add(newCustomerAddress)
-                db.session.commit()
-                
-                # Return the updated address as part of the response
-                return jsonify({"New Address": customer.Customer_Address})
-            else:
-                return jsonify({"Error": "No address provided or address is already in the db"}), 400
-        else:
-            return jsonify({"Error": "Customer not found"}), 404
-
+        # Create and add the new address
+        new_address_entry = Customer_Address(CustomerID=customer_id, Address=address_text)
+        db.session.add(new_address_entry)
+        db.session.commit()
+        return jsonify({"message": "Address added successfully", "address": address_text}), 201
     except Exception as e:
-        # Add more specific logging
-        print(f"Error updating customer addresses for ID {customer_id}: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        db.session.rollback()
+        print(f"Error adding address for customer {customer_id}: {str(e)}")
+        return jsonify({"error": "Failed to add address"}), 500
 
-
-@app.route('/api/customers/address', methods=['DELETE']) # Changed route
+@app.route('/api/customers/address', methods=['DELETE']) # Route uses JWT for customer ID
 @require_customer
-def delete_customer_address(): # Removed id parameter
+def delete_customer_address():
+    customer_id = g.current_user['id'] # Use 'id' instead of 'sub'
+    data = request.json
+    address_text = data.get('address') # Address to delete comes in the request body
+
+    if not address_text:
+        return jsonify({"error": "Address text is required"}), 400
+
     try:
-        data = request.json
-        input_address=data["Address"]
-        customer_id = g.current_user['id']
-        tgt_address = db.session.query(Customer_Address).filter_by(CustomerID = customer_id).filter_by(Customer_Address=input_address)
-        if tgt_address:                
-            db.session.delete(tgt_address)
-            db.session.commit()
-            # Return the updated address as part of the response
-            return jsonify({"Message": (input_address, "Deleted") })
-        else:
-            return jsonify({"Error": "Customer Address not found"}), 404
+        # Find the address to delete
+        address_to_delete = Customer_Address.query.filter_by(CustomerID=customer_id, Address=address_text).first()
 
+        if not address_to_delete:
+            return jsonify({"error": "Address not found for this customer"}), 404
+
+        # Delete the address
+        db.session.delete(address_to_delete)
+        db.session.commit()
+        return jsonify({"message": "Address deleted successfully"}), 200
     except Exception as e:
-        # Add more specific logging
-        print(f"Error deleting customer addresses for ID {customer_id}: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        db.session.rollback()
+        print(f"Error deleting address for customer {customer_id}: {str(e)}")
+        return jsonify({"error": "Failed to delete address"}), 500
 
+@app.route('/api/customers/address', methods=['PUT']) # Route uses JWT for customer ID
+@require_customer
+def update_customer_address():
+    customer_id = g.current_user['id'] # Use 'id' instead of 'sub'
+    data = request.json
+    old_address_text = data.get('old_address')
+    new_address_text = data.get('new_address')
+
+    if not old_address_text or not new_address_text:
+        return jsonify({"error": "Both old_address and new_address are required"}), 400
+    
+    if old_address_text == new_address_text:
+        return jsonify({"message": "New address is the same as the old one. No changes made."}), 200 # Or 304 Not Modified
+
+    try:
+        # Find the address entry to update
+        address_to_update = Customer_Address.query.filter_by(
+            CustomerID=customer_id, 
+            Address=old_address_text
+        ).first()
+
+        if not address_to_update:
+            return jsonify({"error": "Old address not found for this customer"}), 404
+        
+        # Check if the new address already exists (optional, prevents duplicates if desired)
+        # existing_new = Customer_Address.query.filter_by(
+        #     CustomerID=customer_id, 
+        #     Address=new_address_text
+        # ).first()
+        # if existing_new:
+        #     return jsonify({"error": "The new address already exists for this customer"}), 409
+
+        # Update the address text
+        # Since Customer_Address is part of the primary key, we might need to delete and re-add
+        # Or, if the DB allows PK updates (less common), update directly.
+        # Safest approach: Delete old, add new within a transaction.
+        
+        db.session.delete(address_to_update)
+        new_address_entry = Customer_Address(CustomerID=customer_id, Address=new_address_text)
+        db.session.add(new_address_entry)
+        
+        db.session.commit()
+        return jsonify({"message": "Address updated successfully", "new_address": new_address_text}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating address for customer {customer_id} from '{old_address_text}' to '{new_address_text}': {str(e)}")
+        # Consider more specific error checking (e.g., duplicate key violation if new address exists)
+        return jsonify({"error": "Failed to update address"}), 500
 
 @app.route('/api/messages', methods = ['GET'])
 def get_messages():
