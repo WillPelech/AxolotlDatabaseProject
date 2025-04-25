@@ -48,6 +48,11 @@ class Customer(db.Model):
     Email = db.Column(db.String(100), unique=True, nullable=False)
     DateOfBirth = db.Column(db.Date, nullable=True)
 
+class Customer_Address(db.Model):
+    __tablename__ = 'Customer_Address'
+    CustomerID = db.Column(db.Integer, db.ForeignKey('Customer.CustomerID'), primary_key = True)
+    Customer_Address = db.Column(db.String(255), primary_key = True)
+
 class RestaurantAccount(db.Model):
     __tablename__ = 'Restaurant_Account'
     AccountID = db.Column(db.Integer, primary_key=True)
@@ -611,7 +616,7 @@ def create_restaurant():
         if missing_fields:
              return jsonify({'error': f'Missing required restaurant data fields: {", ".join(missing_fields)}.'}), 400
         
-        # Get the next RestaurantID (consider using auto-increment if your DB supports it)
+        # Get the next RestaurantID
         max_id = db.session.query(db.func.max(Restaurant.RestaurantID)).scalar()
         next_id = 1 if max_id is None else max_id + 1
 
@@ -762,7 +767,82 @@ def get_reviewed_restaurants(id):
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
+@app.route('/api/customers/address', methods=['GET']) # Changed route
+@require_customer
+def get_customer_address(): # Removed id parameter
+    try:
+        customer_id = g.current_user['id'] # Get ID from token context
+        customer = Customer_Address.query.get(customer_id)
+
+        if customer:
+            addresses = Customer_Address.query.filter_by(CustomerID = customer_id).all()
+            if addresses:
+                return jsonify({
+                    "address": a.address
+                }for a in addresses)
+            else:
+                return jsonify({
+                    "Error": "Customer has no addresses"
+                }),400
+        else:
+            return jsonify({
+                "Error": "Customer not found"
+            }),404
+    except Exception as e:
+        # Add more specific logging
+        print(f"Error fetching customer addresses for ID {customer_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/customers/address', methods=['POST']) # Changed route
+@require_customer
+def create_customer_address(): # Removed id parameter
+    try:
+        customer_id = g.current_user['id']
+        customer = Customer_Address.query.get(customer_id)
+
+        if customer:
+            input_address = request.json['address']
+            if input_address & Customer_Address.query.get(input_address) is None:
+                newCustomerAddress = Customer(customer_id,input_address)
+                db.session.add(newCustomerAddress)
+                db.session.commit()
+                
+                # Return the updated address as part of the response
+                return jsonify({"New Address": customer.Customer_Address})
+            else:
+                return jsonify({"Error": "No address provided or address is already in the db"}), 400
+        else:
+            return jsonify({"Error": "Customer not found"}), 404
+
+    except Exception as e:
+        # Add more specific logging
+        print(f"Error updating customer addresses for ID {customer_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/customers/address', methods=['DELETE']) # Changed route
+@require_customer
+def delete_customer_address(): # Removed id parameter
+    try:
+        data = request.json
+        input_address=data["Address"]
+        customer_id = g.current_user['id']
+        tgt_address = db.session.query(Customer_Address).filter_by(CustomerID = customer_id).filter_by(Customer_Address=input_address)
+        if tgt_address:                
+            db.session.delete(tgt_address)
+            db.session.commit()
+            # Return the updated address as part of the response
+            return jsonify({"Message": (input_address, "Deleted") })
+        else:
+            return jsonify({"Error": "Customer Address not found"}), 404
+
+    except Exception as e:
+        # Add more specific logging
+        print(f"Error deleting customer addresses for ID {customer_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/messages', methods = ['GET'])
 def get_messages():
     try:
