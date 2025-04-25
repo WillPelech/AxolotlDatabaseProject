@@ -1219,7 +1219,7 @@ def get_restaurant_photos(restaurant_id):
         
         photolist = [{
             'PhotoID': f.PhotoID,
-            'PhotoImage': f.PhotoImage
+            'PhotoImage': decodeBase64(f.PhotoImage)
         } for f in photos]
         
         print(f"Retrieved {len(photolist)} photos for restaurant {restaurant_id}")  # Add logging
@@ -1249,7 +1249,7 @@ def update_restaurant_photos(restaurant_id):
         new_photo = Photo(
             FoodID=next_photo_id,
             RestaurantID=restaurant_id,
-            PhotoImage=photo_image
+            PhotoImage=encodeBase64(photo_image)
         )
         db.session.add(new_photo)
         db.session.commit()
