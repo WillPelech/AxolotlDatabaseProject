@@ -6,7 +6,7 @@ import CreateFoodModal from '../components/CreateFoodModal';
 function EditRestaurant() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const [formData, setFormData] = useState({
     RestaurantName: '',
     Category: '',
@@ -34,6 +34,18 @@ function EditRestaurant() {
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
+
+  const getAuthHeaders = (includeContentType = true) => {
+    const token = getAuthToken();
+    let headers = {};
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
 
   const fetchRestaurantDetails = async () => {
     try {
@@ -96,9 +108,7 @@ function EditRestaurant() {
     try {
       const response = await fetch(`http://localhost:5000/api/restaurants/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           id: parseInt(id),
           restaurantData: {
@@ -108,17 +118,21 @@ function EditRestaurant() {
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        navigate('/manage-restaurants', {
-          state: { message: 'Restaurant updated successfully!' }
-        });
-      } else {
-        setError(data.error || 'Failed to update restaurant');
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setError("Authentication failed or permission denied.");
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to update restaurant');
+        }
+        return;
       }
+
+      navigate('/manage-restaurants', {
+        state: { message: 'Restaurant updated successfully!' }
+      });
     } catch (err) {
-      setError('Error connecting to the server');
+      setError(err.message || 'Error connecting to the server');
     }
   };
 
@@ -131,24 +145,27 @@ function EditRestaurant() {
     if (!window.confirm('Are you sure you want to delete this food item?')) {
       return;
     }
-
+    setError('');
     try {
       const response = await fetch(`http://localhost:5000/api/restaurants/${id}/foods/${foodId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        headers: getAuthHeaders(false)
       });
 
-      if (response.ok) {
-        setFoods(foods.filter(food => food.FoodID !== foodId));
-        setSuccessMessage('Food item deleted successfully!');
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to delete food item');
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setError("Authentication failed or permission denied.");
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to delete food item');
+        }
+        return;
       }
+      
+      setFoods(foods.filter(food => food.FoodID !== foodId));
+      setSuccessMessage('Food item deleted successfully!');
     } catch (err) {
-      setError('Error connecting to the server');
+      setError(err.message || 'Error connecting to the server');
     }
   };
 
@@ -158,30 +175,36 @@ function EditRestaurant() {
   };
 
   const handleUpdateFood = async (updatedFood) => {
+    setError('');
     try {
       const response = await fetch(`http://localhost:5000/api/restaurants/${id}/foods/${updatedFood.FoodID}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           FoodName: updatedFood.FoodName,
           Price: parseFloat(updatedFood.Price)
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setFoods(foods.map(food => 
-          food.FoodID === updatedFood.FoodID ? data.food : food
-        ));
-        setSuccessMessage('Food item updated successfully!');
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to update food item');
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setError("Authentication failed or permission denied.");
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to update food item');
+        }
+        return;
       }
+      
+      const data = await response.json();
+      setFoods(foods.map(food => 
+        food.FoodID === updatedFood.FoodID ? data.food : food
+      ));
+      setSuccessMessage('Food item updated successfully!');
+      setShowFoodModal(false);
+      setEditingFood(null);
     } catch (err) {
-      setError('Error connecting to the server');
+      setError(err.message || 'Error connecting to the server');
     }
   };
 

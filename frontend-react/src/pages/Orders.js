@@ -3,13 +3,27 @@ import { useAuth } from '../contexts/AuthContext';
 import ReviewModal from '../components/ReviewModal';
 
 const Orders = () => {
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+
+  const getAuthHeaders = (includeContentType = true) => {
+    const token = getAuthToken();
+    console.log("[Auth Debug Frontend] Token retrieved in getAuthHeaders:", token ? `${token.substring(0, 10)}...` : null);
+    let headers = {};
+    if (includeContentType) {
+        headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    console.log("[Auth Debug Frontend] Generated Headers:", headers);
+    return headers;
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -19,22 +33,53 @@ const Orders = () => {
         return;
       }
 
+      setLoading(true);
+      setError('');
       try {
-        const response = await fetch(`http://localhost:5000/api/orders/customer/${user.accountId}`);
+        const headers = getAuthHeaders(false);
+        console.log("[Auth Debug Frontend] Fetching orders with headers:", headers);
+        const response = await fetch(`http://localhost:5000/api/orders/customer`, {
+          headers: headers
+        });
+
         if (!response.ok) {
-          throw new Error('Failed to fetch orders');
+          let errorMsg = `HTTP error! status: ${response.status}`;
+          if (response.status === 401 || response.status === 403) {
+            errorMsg = "Authentication failed. Please log in again.";
+          } else {
+            try {
+              // Try to parse potential JSON error body
+              const errorData = await response.json();
+              errorMsg = errorData.error || JSON.stringify(errorData);
+            } catch (jsonError) {
+              // If JSON parsing fails, read as text
+              console.warn("Response was not JSON, reading as text.");
+              try {
+                errorMsg = await response.text(); 
+              } catch (textError) {
+                console.error("Failed to read error response as text:", textError);
+                // Keep the original HTTP status error message
+              }
+            }
+          }
+          throw new Error(errorMsg); // Throw the determined error message
         }
-        const data = await response.json();
-        setOrders(data);
+        
+        // Only parse JSON here if response was OK
+        const data = await response.json(); 
+        setOrders(data || []); // Ensure data exists, default to empty array
+
       } catch (err) {
+        console.error("Fetch orders error:", err); // Log the actual error caught
         setError(err.message);
+        setOrders([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrders();
-  }, [user]);
+  }, [user, getAuthToken]);
 
   const handleReviewClick = (restaurantId, restaurantName) => {
     setSelectedRestaurant({ id: restaurantId, name: restaurantName });
@@ -52,9 +97,7 @@ const Orders = () => {
 
       const response = await fetch('http://localhost:5000/api/reviews', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           CustomerID: user.accountId,
           RestaurantID: selectedRestaurant.id,
@@ -65,15 +108,17 @@ const Orders = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create review');
+        if (response.status === 401 || response.status === 403) {
+          setError("Authentication failed or permission denied. Please log in again.");
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create review');
+        }
       }
 
-      // Close the modal and show success message
       setShowReviewModal(false);
       setSelectedRestaurant(null);
       setSuccessMessage('Review submitted successfully!');
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       console.error("Review submission error:", err);

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function CreateRestaurant() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -13,6 +13,18 @@ function CreateRestaurant() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const getAuthHeaders = (includeContentType = true) => {
+    const token = getAuthToken();
+    let headers = {};
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -26,27 +38,33 @@ function CreateRestaurant() {
     setLoading(true);
     setError('');
 
+    if (!user || !user.isRestaurant) {
+      setError('Only restaurant owners can create restaurants. Please log in.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:5000/api/restaurants', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           restaurantData: {
             ...formData,
-            accountID: user.accountId
           }
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create restaurant');
+        if (response.status === 401 || response.status === 403) {
+          setError("Authentication failed or permission denied.");
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create restaurant');
+        }
+        return;
       }
 
-      // Show success message and redirect
       navigate('/manage-restaurants', { 
         state: { message: 'Restaurant created successfully!' }
       });

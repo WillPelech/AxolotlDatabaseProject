@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import os
@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 from flask_cors import cross_origin
 import pymysql
 import base64
+from functools import wraps
 
 
 # Load environment variables
@@ -124,12 +125,36 @@ def check_password(input_password, stored_password):
     print(f"Against stored hash: {stored_password}")
     return hash_password(input_password) == stored_password
 
-def generate_token(user_id):
-    return jwt.encode(
-        {'user_id': user_id, 'exp': datetime.now(timezone.utc) + timedelta(days=1)},
-        JWT_SECRET,
-        algorithm='HS256'
-    )
+def generate_token(user_id, account_type):
+    """Generates JWT containing user ID (sub) and account type."""
+    try:
+        payload = {
+            'sub': user_id, # Use 'sub' (subject) standard claim for ID
+            'accountType': account_type,
+            'exp': datetime.now(timezone.utc) + timedelta(days=1) # Expiration time
+        }
+        return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+    except Exception as e:
+        print(f"Error generating token: {e}")
+        return None
+
+def verify_token(token):
+    """Verifies the token and returns the payload if valid, otherwise None."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        # Basic check for expected keys
+        if 'sub' not in payload or 'accountType' not in payload:
+             raise jwt.InvalidTokenError("Token missing required claims.")
+        return payload
+    except jwt.ExpiredSignatureError:
+        print("Token expired.")
+        return None
+    except jwt.InvalidTokenError as e:
+        print(f"Invalid token: {e}")
+        return None
+    except Exception as e:
+        print(f"Token verification error: {e}")
+        return None
 
 # Serve React App
 @app.route('/', defaults={'path': ''})
@@ -226,79 +251,154 @@ def login():
 
         print(f"Login attempt for username/email: {username_or_email}")
         
-        # First try Customer table
-        user = Customer.query.filter(
+        user = None
+        account_type = None
+        account_id = None
+        
+        # Try Customer table
+        customer = Customer.query.filter(
             (Customer.Username == username_or_email) | (Customer.Email == username_or_email)
         ).first()
-        account_type = 'customer'
-
-        # If not found in Customer table, try Restaurant_Account table
+        if customer and check_password(password, customer.Password):
+            user = customer
+            account_type = 'customer'
+            account_id = customer.CustomerID
+            
+        # If not customer, try Restaurant_Account table
         if not user:
-            user = RestaurantAccount.query.filter(
-                (RestaurantAccount.Username == username_or_email) | (RestaurantAccount.Email == username_or_email)
-            ).first()
-            account_type = 'restaurant'
+             restaurant_acc = RestaurantAccount.query.filter(
+                 (RestaurantAccount.Username == username_or_email) | (RestaurantAccount.Email == username_or_email)
+             ).first()
+             if restaurant_acc and check_password(password, restaurant_acc.Password):
+                 user = restaurant_acc
+                 account_type = 'restaurant'
+                 account_id = restaurant_acc.AccountID
 
         print(f"Database query result: {user}")
-        print(f"Account type: {account_type}")
+        print(f"Account type found: {account_type}")
 
-        if user:
-            if check_password(password, user.Password):
-                response = {
-                    'message': f'Login successful - You are logged in as a {account_type} account',
-                    'user': {
-                        'username': user.Username,
-                        'email': user.Email,
-                        'accountType': account_type,
-                        'accountId': user.CustomerID if account_type == 'customer' else user.AccountID,
-                        'isRestaurant': account_type == 'restaurant'
-                    }
+        if user and account_id is not None:
+            token = generate_token(user_id=account_id, account_type=account_type)
+            if not token:
+                 # Handle error if token generation fails
+                 return jsonify({'error': 'Failed to generate authentication token.'}), 500
+                 
+            response_data = {
+                'message': f'Login successful - You are logged in as a {account_type} account',
+                'token': token, # Include the token in the response
+                'user': {
+                    'username': user.Username,
+                    'email': user.Email,
+                    'accountType': account_type,
+                    # Use the consistent account_id determined above
+                    'accountId': account_id, 
+                    'isRestaurant': account_type == 'restaurant'
                 }
-                return jsonify(response), 200
-            else:
-                return jsonify({'error': 'Invalid password'}), 401
-        else:
-            print("User not found")
-            return jsonify({'error': 'User not found'}), 401
+            }
+            return jsonify(response_data), 200
+        elif customer and not check_password(password, customer.Password):
+             return jsonify({'error': 'Invalid password for customer'}), 401
+        elif not customer:
+             restaurant_acc = RestaurantAccount.query.filter(
+                 (RestaurantAccount.Username == username_or_email) | (RestaurantAccount.Email == username_or_email)
+             ).first()
+             if restaurant_acc and not check_password(password, restaurant_acc.Password):
+                 return jsonify({'error': 'Invalid password for restaurant account'}), 401
+             elif not restaurant_acc:
+                  print("User not found in either table")
+                  return jsonify({'error': 'User not found'}), 401
+        else: # Catch any other login failure cases
+             print("Login failed for unknown reason")
+             return jsonify({'error': 'Login failed'}), 401
+
 
     except Exception as e:
         print(f"Login error: {str(e)}")
-        return jsonify({'error': 'Login failed'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Login failed due to server error'}), 500
 
-def verify_token(token):
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-        return payload['user_id']
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
-@app.route('/api/auth/verify', methods=['POST'])
-def verify_auth():
-    try:
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({"error": "No token provided"}), 401
-
-        user_id = verify_token(token)
-        if not user_id:
-            return jsonify({"error": "Invalid or expired token"}), 401
-
-        user = Customer.query.filter_by(CustomerID=user_id).first()
+# Decorator for requiring JWT token
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get('Authorization')
+        print(f"[Auth Debug] Received Authorization header: {auth_header}") # Log header
         
-        if not user:
-            return jsonify({"error": "User not found"}), 404
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                token = auth_header.split(" ")[1]
+                print(f"[Auth Debug] Extracted Token: {token[:10]}...") # Log first part of token
+            except IndexError:
+                print("[Auth Debug] Error: Invalid Bearer format.")
+                return jsonify({'message': 'Invalid Authorization header format. Use Bearer token.'}), 401
+        else:
+             print("[Auth Debug] Warning: Authorization header missing or not Bearer type.")
 
-        return jsonify({
-            "user": {
-                "id": user.CustomerID,
-                "username": user.Username,
-                "email": user.Email
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+
+        payload = verify_token(token)
+        print(f"[Auth Debug] verify_token payload: {payload}") # Log verification result
+        
+        if not payload:
+             return jsonify({'message': 'Token is invalid or expired!'}), 401
+
+        try:
+            user_id = payload['sub']
+            account_type = payload['accountType']
+            print(f"[Auth Debug] Token UserID: {user_id}, AccountType: {account_type}") # Log extracted info
+            
+            current_user_obj = None
+            if account_type == 'customer':
+                current_user_obj = Customer.query.get(user_id)
+            elif account_type == 'restaurant':
+                current_user_obj = RestaurantAccount.query.get(user_id)
+            
+            print(f"[Auth Debug] Loaded user object: {current_user_obj}") # Log loaded user
+            
+            if not current_user_obj:
+                 print("[Auth Debug] Error: User from token not found in DB.")
+                 return jsonify({'message': 'User associated with token not found!'}), 401
+
+            g.current_user = {
+                'id': user_id,
+                'type': account_type,
+                'username': current_user_obj.Username, 
+                'object': current_user_obj 
             }
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            print(f"[Auth Debug] Set g.current_user: {g.current_user}") # Log context
+            
+        except Exception as e:
+             print(f"[Auth Debug] Error loading user from token: {e}")
+             import traceback
+             traceback.print_exc()
+             return jsonify({'message': 'Error processing token user data!'}), 500
+
+        return f(*args, **kwargs)
+    return decorated
+
+# Decorator for requiring customer role
+def require_customer(f):
+     @wraps(f)
+     @token_required # Ensures token is valid and g.current_user is set
+     def decorated(*args, **kwargs):
+         print(f"[Auth Debug] require_customer checking user type: {g.current_user.get('type') if hasattr(g, 'current_user') else 'g.current_user not set'}") # Log type check
+         if not hasattr(g, 'current_user') or g.current_user.get('type') != 'customer':
+             print("[Auth Debug] Access Denied: Customer role required.")
+             return jsonify({'message': 'Access denied: Customer role required.'}), 403
+         return f(*args, **kwargs)
+     return decorated
+
+def require_restaurant(f):
+     @wraps(f)
+     @token_required # Ensures token is valid and g.current_user is set
+     def decorated(*args, **kwargs):
+         if g.current_user['type'] != 'restaurant':
+             return jsonify({'message': 'Access denied: Restaurant role required.'}), 403
+         return f(*args, **kwargs)
+     return decorated
 
 @app.route('/api/restaurants', methods=['GET'])
 def get_all_restaurants():
@@ -489,68 +589,76 @@ def get_restaurant_by_id(id):
         print(f"Error fetching restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/restaurants/account/<int:account_id>', methods=['GET'])
-def get_restaurants_by_account(account_id):
-    """Fetches restaurants associated with a specific restaurant account ID."""
-    try:
-        restaurants = Restaurant.query.filter_by(AccountID=account_id).all()
-        return jsonify({
-            "restaurants": [{
-                'RestaurantID': r.RestaurantID,
-                'RestaurantName': r.RestaurantName,
-                'Category': r.Category,
-                'Rating': r.Rating,
-                'PhoneNumber': r.PhoneNumber,
-                'Address': r.Address,
-                'AccountID': r.AccountID # Include AccountID for verification if needed
-            } for r in restaurants]
-        })
-    except Exception as e:
-        print(f"Error fetching restaurants for account {account_id}: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/api/restaurants', methods=['POST'])
+@require_restaurant
 def create_restaurant():
     try:
-        data = request.json["restaurantData"]
+        account_id = g.current_user['id'] # Get owner ID from token
         
-        # Get the next RestaurantID
+        # Check if request body is valid JSON
+        if not request.is_json:
+             return jsonify({'error': 'Request must be JSON.'}), 400
+        data = request.get_json()
+
+        # Check if 'restaurantData' key exists
+        if "restaurantData" not in data:
+             return jsonify({'error': 'Missing restaurantData field in request body.'}), 400
+        restaurantData = data["restaurantData"]
+        
+        # Validate other required fields within restaurantData
+        required_fields = ['name', 'category', 'phoneNumber', 'address']
+        missing_fields = [field for field in required_fields if field not in restaurantData or not restaurantData[field]]
+        if missing_fields:
+             return jsonify({'error': f'Missing required restaurant data fields: {", ".join(missing_fields)}.'}), 400
+        
+        # Get the next RestaurantID (consider using auto-increment if your DB supports it)
         max_id = db.session.query(db.func.max(Restaurant.RestaurantID)).scalar()
         next_id = 1 if max_id is None else max_id + 1
 
-        # Create new restaurant
+        # Create new restaurant instance
         new_restaurant = Restaurant(
             RestaurantID=next_id,
-            RestaurantName=data['name'],
-            Category=data['category'],
-            PhoneNumber=data['phoneNumber'],
-            Address=data['address'],
-            AccountID=data['accountID']
+            RestaurantName=restaurantData['name'],
+            Category=restaurantData['category'],
+            PhoneNumber=restaurantData['phoneNumber'],
+            Address=restaurantData['address'],
+            AccountID=account_id # Assign ownership from token
         )
         db.session.add(new_restaurant)
         db.session.commit()
         
+        # Prepare response data
+        created_restaurant_data = {
+            'RestaurantID': new_restaurant.RestaurantID,
+            'RestaurantName': new_restaurant.RestaurantName,
+            'Category': new_restaurant.Category,
+            'Rating': new_restaurant.Rating, # Will be null initially
+            'PhoneNumber': new_restaurant.PhoneNumber,
+            'Address': new_restaurant.Address,
+            'AccountID': new_restaurant.AccountID
+        }
+        
         return jsonify({
             'message': 'Restaurant created successfully',
-            'restaurant': {
-                'RestaurantID': new_restaurant.RestaurantID,
-                'RestaurantName': new_restaurant.RestaurantName,
-                'Category': new_restaurant.Category,
-                'Rating': new_restaurant.Rating,
-                'PhoneNumber': new_restaurant.PhoneNumber,
-                'Address': new_restaurant.Address,
-                'AccountID': new_restaurant.AccountID
-            }
+            'restaurant': created_restaurant_data
         }), 201
+        
+    except KeyError as e:
+        # Handle cases where request.json["restaurantData"] fails (though checked above)
+        db.session.rollback()
+        print(f"Error creating restaurant (KeyError): {str(e)}")
+        return jsonify({"error": f"Invalid request format: {str(e)}"}), 400
     except Exception as e:
         db.session.rollback()
         print(f"Error creating restaurant: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "An unexpected error occurred while creating the restaurant."}), 500
 
 @app.route('/api/restaurants/<int:id>', methods=['PUT'])
+@require_restaurant 
 def update_restaurant(id):
     try:
-        # First check if restaurant exists
         restaurant = Restaurant.query.filter_by(RestaurantID=id).first()
         
         if not restaurant:
@@ -758,25 +866,22 @@ def get_front_page_restaurants():
         return jsonify([])
 
 @app.route('/api/orders', methods=['POST'])
+@require_customer
 def create_order():
     try:
         data = request.json
-        print("Received order data:", data)  # Debug log
+        customer_id = g.current_user['id'] # Get ID from token context
         
-        customer_id = data.get('CustomerID')
+        # Fetch other data from request body
         restaurant_id = data.get('RestaurantID')
         items = data.get('items', [])
-        additional_costs = data.get('Additional_Costs', 0)  # Default to 0 if not provided
+        additional_costs = data.get('Additional_Costs', 0)
         price_total = data.get('PriceTotal')
 
-        if not all([customer_id, restaurant_id, items, price_total]):
-            missing_fields = [field for field, value in {
-                'CustomerID': customer_id,
-                'RestaurantID': restaurant_id,
-                'items': items,
-                'PriceTotal': price_total
-            }.items() if not value]
-            return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
+        # Validate required fields from body (excluding customer_id)
+        if not all([restaurant_id, items, price_total is not None]):
+             missing = [k for k,v in {'RestaurantID': restaurant_id, 'items': items, 'PriceTotal': price_total}.items() if not v and v is not None]
+             return jsonify({'error': f'Missing required fields: {", ".join(missing)}'}), 400
 
         try:
             # Get the next OrderID
@@ -819,10 +924,11 @@ def create_order():
         print("Error creating order:", str(e))
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/orders/customer/<int:customer_id>', methods=['GET'])
-def get_customer_orders(customer_id):
+@app.route('/api/orders/customer', methods=['GET']) # Changed route, ID comes from token
+@require_customer
+def get_customer_orders(): # Removed customer_id parameter
     try:
-        # Get all orders for the customer
+        customer_id = g.current_user['id'] # Get ID from token context
         orders_data = db.session.query(
             Orders, Restaurant.RestaurantName
         ).join(
@@ -868,7 +974,9 @@ def get_customer_orders(customer_id):
         return jsonify(orders)
 
     except Exception as e:
-        print("Error fetching orders:", str(e))
+        print(f"Error fetching orders for customer {customer_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 def encodeBase64(image_path):
@@ -894,33 +1002,37 @@ def decodeBase64(base64_str,output_path):
         }), 500
 
 @app.route('/api/reviews', methods=['POST'])
+@require_customer
 def create_review():
     try:
         data = request.get_json()
-        
-        # Explicitly check for all required keys first
-        required_keys = ['CustomerID', 'RestaurantID', 'Rating', 'ReviewContent', 'Date']
+        customer_id = g.current_user['id'] # Get ID from token context
+
+        # Check required fields from body
+        required_keys = ['RestaurantID', 'Rating', 'ReviewContent', 'Date']
         missing_keys = [key for key in required_keys if key not in data]
         if missing_keys:
             raise KeyError(f"Missing required key(s): {', '.join(missing_keys)}")
+        
+        # Validate CustomerID from token matches payload if present (optional belt-and-suspenders)
+        # if 'CustomerID' in data and data['CustomerID'] != customer_id:
+        #     return jsonify({'error': 'Mismatched CustomerID.'}), 400
+
+        # Parse the date string
+        date_str = data['Date']
+        try:
+            review_date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError as ve:
+            raise ValueError(f"Invalid date format for '{date_str}'. Expected 'YYYY-MM-DD HH:MM:SS'. Error: {ve}")
 
         # Get the next ReviewID
         max_id = db.session.query(db.func.max(Review.ReviewID)).scalar()
         next_id = 1 if max_id is None else max_id + 1
 
-        # Parse the date string
-        date_str = data['Date']
-        try:
-             # Use the format sent by the frontend
-            review_date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-        except ValueError as ve:
-            # Raise a more informative error if parsing fails
-            raise ValueError(f"Invalid date format for '{date_str}'. Expected 'YYYY-MM-DD HH:MM:SS'. Error: {ve}")
-
         # Create new review
         new_review = Review(
             ReviewID=next_id,
-            CustomerID=data['CustomerID'],
+            CustomerID=customer_id, # Use ID from token
             RestaurantID=data['RestaurantID'],
             Rating=data['Rating'],
             ReviewContent=data['ReviewContent'],
@@ -949,13 +1061,13 @@ def create_review():
         }), 201
         
     except KeyError as e:
-         print(f"Error creating review (KeyError): {str(e)}")
-         # Return the specific key error message
-         return jsonify({'error': str(e)}), 400 
+        print(f"Error creating review (KeyError): {str(e)}")
+        # Return the specific key error message
+        return jsonify({'error': str(e)}), 400 
     except ValueError as e:
-         print(f"Error creating review (ValueError): {str(e)}")
-         # Return the specific value error message (e.g., invalid date format)
-         return jsonify({'error': str(e)}), 400
+        print(f"Error creating review (ValueError): {str(e)}")
+        # Return the specific value error message (e.g., invalid date format)
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         # Log the full traceback for unexpected errors
@@ -993,13 +1105,14 @@ def get_restaurant_reviews(restaurant_id):
         print(f"Error fetching reviews: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/customers/<int:id>/reviews', methods=['GET'])
-def get_customer_reviews(id):
+@app.route('/api/customers/reviews', methods=['GET']) # Changed route
+@require_customer
+def get_customer_reviews(): # Removed id parameter
     try:
-        # Get reviews by the customer
+        customer_id = g.current_user['id'] # Get ID from token context
         reviews = db.session.query(Review, Restaurant).join(
             Restaurant, Review.RestaurantID == Restaurant.RestaurantID
-        ).filter(Review.CustomerID == id).order_by(Review.Date.desc()).all()
+        ).filter(Review.CustomerID == customer_id).order_by(Review.Date.desc()).all()
         
         return jsonify({
             "reviews": [{
@@ -1013,20 +1126,24 @@ def get_customer_reviews(id):
         })
     except Exception as e:
         # Add more specific logging
-        print(f"Error fetching customer reviews for ID {id}: {str(e)}")
+        print(f"Error fetching customer reviews for ID {customer_id}: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/reviews/<int:review_id>', methods=['PUT'])
+@require_customer
 def update_review(review_id):
     try:
-        data = request.get_json()
         review = Review.query.get(review_id)
-        
         if not review:
             return jsonify({'error': 'Review not found'}), 404
-
+        
+        # Crucially, check if the logged-in user owns this review
+        if review.CustomerID != g.current_user['id']:
+            return jsonify({'message': 'Forbidden: You can only update your own reviews.'}), 403
+            
+        data = request.get_json()
         # Update review fields
         if 'rating' in data:
             review.Rating = data['rating']
@@ -1052,13 +1169,17 @@ def update_review(review_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/reviews/<int:review_id>', methods=['DELETE'])
+@require_customer
 def delete_review(review_id):
     try:
         review = Review.query.get(review_id)
-        
         if not review:
             return jsonify({'error': 'Review not found'}), 404
-
+        
+        # Check ownership
+        if review.CustomerID != g.current_user['id']:
+            return jsonify({'message': 'Forbidden: You can only delete your own reviews.'}), 403
+            
         db.session.delete(review)
         db.session.commit()
         
@@ -1131,7 +1252,26 @@ def update_restaurant_photos(restaurant_id):
             'error': str(e)
         }), 500
 
-
+@app.route('/api/restaurants/account', methods=['GET']) # Changed route
+@require_restaurant
+def get_restaurants_by_account(): # Removed account_id parameter
+    try:
+        account_id = g.current_user['id'] # Get ID from token context
+        restaurants = Restaurant.query.filter_by(AccountID=account_id).all()
+        return jsonify({
+            "restaurants": [{
+                'RestaurantID': r.RestaurantID,
+                'RestaurantName': r.RestaurantName,
+                'Category': r.Category,
+                'Rating': r.Rating,
+                'PhoneNumber': r.PhoneNumber,
+                'Address': r.Address,
+                'AccountID': r.AccountID # Include AccountID for verification if needed
+            } for r in restaurants]
+        })
+    except Exception as e:
+        print(f"Error fetching restaurants for account {account_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

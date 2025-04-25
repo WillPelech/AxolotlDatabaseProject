@@ -5,7 +5,7 @@ import ReviewModal from '../components/ReviewModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 function MyReviews() {
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,26 +18,51 @@ function MyReviews() {
     restaurantName: ''
   });
 
+  const getAuthHeaders = (includeContentType = true) => {
+    const token = getAuthToken();
+    let headers = {};
+    if (includeContentType) {
+         headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
   useEffect(() => {
     fetchReviews();
-  }, [user]);
+  }, [user, getAuthToken]);
 
   const fetchReviews = async () => {
     if (!user || !user.accountId) {
       setError('Please log in to view your reviews');
       setLoading(false);
+      setReviews([]);
       return;
     }
 
+    setLoading(true);
+    setError('');
     try {
-      const response = await fetch(`http://localhost:5000/api/customers/${user.accountId}/reviews`);
+      const response = await fetch(`http://localhost:5000/api/customers/reviews`, { 
+          headers: getAuthHeaders(false)
+      }); 
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch reviews');
+        if (response.status === 401 || response.status === 403) {
+             setError("Authentication failed. Please log in again.");
+        } else {
+             const errorData = await response.json();
+             throw new Error(errorData.error || 'Failed to fetch reviews');
+        }
+      } else {
+            const data = await response.json();
+            setReviews(data.reviews || []);
       }
-      const data = await response.json();
-      setReviews(data.reviews);
     } catch (err) {
       setError(err.message);
+      setReviews([]);
     } finally {
       setLoading(false);
     }
@@ -57,18 +82,26 @@ function MyReviews() {
   };
 
   const handleDeleteConfirm = async () => {
+    if (!deleteConfirmation.reviewId) return;
+    setError('');
     try {
       const response = await fetch(`http://localhost:5000/api/reviews/${deleteConfirmation.reviewId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(false)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete review');
+         if (response.status === 401 || response.status === 403) {
+             setError("Authentication failed or permission denied.");
+         } else {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to delete review');
+         }
+      } else {
+          setReviews(reviews.filter(review => review.ReviewID !== deleteConfirmation.reviewId));
+          setSuccessMessage('Review deleted successfully');
+          setTimeout(() => setSuccessMessage(''), 3000);
       }
-
-      setReviews(reviews.filter(review => review.ReviewID !== deleteConfirmation.reviewId));
-      setSuccessMessage('Review deleted successfully');
-      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -77,30 +110,37 @@ function MyReviews() {
   };
 
   const handleUpdateReview = async ({ rating, content }) => {
+    if (!editingReview || !editingReview.ReviewID) return;
+    setError('');
     try {
-      const response = await fetch(`http://localhost:5000/api/reviews/${editingReview.ReviewID}`, {
+       const response = await fetch(`http://localhost:5000/api/reviews/${editingReview.ReviewID}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
-          rating,
-          content,
+          rating: rating, 
+          content: content,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update review');
+          if (response.status === 401 || response.status === 403) {
+             setError("Authentication failed or permission denied.");
+          } else {
+               const errorData = await response.json();
+               throw new Error(errorData.error || 'Failed to update review');
+          }
+      } else {
+          const updatedReviewData = await response.json();
+          setReviews(reviews.map(review => 
+            review.ReviewID === editingReview.ReviewID 
+              ? { ...review, Rating: updatedReviewData.review.Rating, ReviewContent: updatedReviewData.review.ReviewContent }
+              : review
+          ));
+          setSuccessMessage('Review updated successfully');
+          setTimeout(() => setSuccessMessage(''), 3000);
+          setIsModalOpen(false);
+          setEditingReview(null);
       }
-
-      const updatedReview = await response.json();
-      setReviews(reviews.map(review => 
-        review.ReviewID === editingReview.ReviewID 
-          ? { ...review, Rating: rating, ReviewContent: content }
-          : review
-      ));
-      setSuccessMessage('Review updated successfully');
-      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setError(err.message);
     }

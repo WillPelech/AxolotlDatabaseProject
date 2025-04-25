@@ -5,7 +5,7 @@ import OrderModal from '../components/OrderModal';
 
 const Restaurant = () => {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +22,19 @@ const Restaurant = () => {
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
+
+  // Helper for auth headers
+  const getAuthHeaders = (includeContentType = true) => {
+    const token = getAuthToken();
+    let headers = {};
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
 
   useEffect(() => {
     const fetchRestaurantData = async () => {
@@ -69,29 +82,23 @@ const Restaurant = () => {
   }, [id]);
 
   const handleOrderSubmit = async (orderData) => {
+    // Clear previous errors
+    setError(null);
     try {
-      // Check if user is logged in
-      if (!user || !user.accountId) {
-        throw new Error('Please log in to place an order');
+      // Check if user is logged in (customer check happens here too)
+      if (!user || !user.accountId || user.accountType !== 'customer') {
+        throw new Error('Please log in as a customer to place an order');
       }
 
-      // Check if the user is a customer
-      if (user.accountType !== 'customer') {
-        throw new Error('Only customers can place orders');
-      }
-
-      // Log the order data for debugging
       console.log('Order data received:', orderData);
       console.log('Current user:', user);
 
-      // Create a single order with all items
+      // Use helper for headers
       const response = await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(), // Add auth headers
         body: JSON.stringify({
-          CustomerID: parseInt(user.accountId),  // This should match the CustomerID in the database
+          // CustomerID is taken from token on backend, no need to send
           RestaurantID: parseInt(id),
           items: orderData.items.map(item => ({
             FoodID: parseInt(item.FoodID),
@@ -103,17 +110,19 @@ const Restaurant = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create order');
+        if (response.status === 401 || response.status === 403) {
+          setError("Authentication failed or permission denied. Please log in again.");
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create order');
+        }
+        return; // Stop execution if response not ok
       }
 
       const result = await response.json();
       console.log('Order created:', result);
 
-      // Close the modal
       setIsOrderModalOpen(false);
-
-      // Show success message
       setSuccessMessage(`Order #${result.orderID} has been placed successfully!`);
 
     } catch (err) {

@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 function CreateFoodModal({ isOpen, onClose, restaurantId, onFoodCreated, editingFood, onFoodUpdated }) {
+  const { getAuthToken } = useAuth();
   const [formData, setFormData] = useState({
     foodName: '',
     price: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const getAuthHeaders = (includeContentType = true) => {
+    const token = getAuthToken();
+    let headers = {};
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
 
   useEffect(() => {
     if (editingFood) {
@@ -37,7 +51,6 @@ function CreateFoodModal({ isOpen, onClose, restaurantId, onFoodCreated, editing
 
     try {
       if (editingFood) {
-        // Update existing food
         const updatedFood = {
           FoodID: editingFood.FoodID,
           FoodName: formData.foodName,
@@ -46,31 +59,34 @@ function CreateFoodModal({ isOpen, onClose, restaurantId, onFoodCreated, editing
         };
         await onFoodUpdated(updatedFood);
       } else {
-        // Create new food
         const response = await fetch(`http://localhost:5000/api/restaurants/${restaurantId}/foods`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             FoodName: formData.foodName,
             Price: parseFloat(formData.price)
           }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to create food item');
+          if (response.status === 401 || response.status === 403) {
+            setError("Authentication failed or permission denied.");
+          } else {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to create food item');
+          }
+          setLoading(false);
+          return;
         }
-
+        
+        const data = await response.json();
         onFoodCreated(data.food);
       }
       onClose();
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (error) setLoading(false);
     }
   };
 
