@@ -825,6 +825,27 @@ def get_messages_by_id():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/messages/user_messages/<int:userid>', methods = ['GET'])
+def get_messages_by_userid():
+    try:
+        userid = request.json["userid"]
+        message = Messages.query.filter_by(SenderID=userid).union(Messages.query.filter_by(RecipientID=userid))
+        
+        if message:
+            return jsonify({
+                "message": {
+                    'MessageID': message.MessageID,
+                    'SenderID': message.SenderID,
+                    'RecipientID': message.RecipientID,
+                    'Timestamp': message.Timestamp,
+                    'Contents': message.Contents
+                }
+            })
+        else:
+            return jsonify({"error": "Message not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/restaurants/front-page', methods=['GET'])
 def get_front_page_restaurants():
     try:
