@@ -10,10 +10,14 @@ from flask_cors import cross_origin
 import pymysql
 import base64
 from functools import wraps
+import io
+from PIL import Image
 
 # Import SQLAlchemy engine utilities for dynamic role switching
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy import text
+from sqlalchemy import delete as sa_delete
 
 # Load environment variables
 load_dotenv()
@@ -189,7 +193,7 @@ class FrontPage(db.Model):
 class Photo(db.Model):
     __tablename__ = 'Photo'
     PhotoID = db.Column(db.Integer, primary_key = True)
-    FoodID = db.Column(db.Integer, db.ForeignKey('Food.FoodID'))
+    RestaurantID = db.Column(db.Integer, db.ForeignKey('Restaurant.RestaurantID'))
     PhotoImage = db.Column(db.Text, nullable=False)
 
 def hash_password(password):
@@ -773,16 +777,15 @@ def update_restaurant(id):
         print(f"Error updating restaurant: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/restaurants/<int:id>', methods = ['DELETE'])
+@app.route('/api/restaurants/<int:id>', methods=['DELETE'])
 @require_restaurant
 def delete_restaurant(id):
     try:
         # First check if restaurant exists
         restaurant = Restaurant.query.filter_by(RestaurantID=id).first()
-        
         if not restaurant:
             return jsonify({"error": "Restaurant not found"}), 404
-            
+
         # Get IDs of food items associated with this restaurant
         food_items = Food.query.filter_by(RestaurantID=id).all()
         food_ids = [item.FoodID for item in food_items]
@@ -790,7 +793,7 @@ def delete_restaurant(id):
         # 1. Delete associated FoodOrders (depends on Food and Orders)
         if food_ids:
             FoodOrders.query.filter(FoodOrders.FoodID.in_(food_ids)).delete(synchronize_session=False)
-        
+
         # 2. Delete associated Orders (depends on Restaurant)
         Orders.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
             
@@ -799,7 +802,7 @@ def delete_restaurant(id):
         
         # 4. Delete associated FrontPage entries (depends on Restaurant)
         FrontPage.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
-        
+
         # 5. Delete associated Food items (depends on Restaurant)
         if food_ids:
              Food.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
@@ -823,7 +826,7 @@ def delete_restaurant(id):
         db.session.rollback()
         print(f"Error deleting restaurant ID {id}: {str(e)}")
         import traceback
-        traceback.print_exc() 
+        traceback.print_exc()
         return jsonify({"error": f"An error occurred while deleting restaurant ID {id}."}), 500
 
 @app.route('/api/customers/<int:id>/restaurants', methods=['GET'])
@@ -1421,7 +1424,7 @@ def get_restaurant_photos(restaurant_id):
         
         photolist = [{
             'PhotoID': f.PhotoID,
-            'PhotoImage': decodeBase64(f.PhotoImage)
+            'PhotoImage': f.PhotoImage
         } for f in photos]
         
         print(f"Retrieved {len(photolist)} photos for restaurant {restaurant_id}")  # Add logging
@@ -1442,31 +1445,81 @@ def get_restaurant_photos(restaurant_id):
 def update_restaurant_photos(restaurant_id):
     try:
         data = request.get_json()
-        photo_image=data.get('PhotoImage')
+        photo_image = data.get('PhotoImage')
 
-        # Get the next FoodID
+        # Compress the image using PIL
+        try:
+            # Decode the base64 image
+            image_data = base64.b64decode(photo_image)
+            img = Image.open(io.BytesIO(image_data))
+            
+            # Resize the image while maintaining aspect ratio - reduce to smaller size
+            max_size = (400, 400)  # Smaller maximum dimensions
+            img.thumbnail(max_size, Image.LANCZOS)
+            
+            # Save with compression
+            output = io.BytesIO()
+            if img.mode in ('RGBA', 'LA'):
+                # Convert images with transparency to RGB
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[3])  # Use alpha as mask
+                background.save(output, format='JPEG', quality=60)  # Lower quality
+            else:
+                img.save(output, format='JPEG', quality=60)  # Lower quality
+            
+            # Convert back to base64
+            compressed_image = base64.b64encode(output.getvalue()).decode('utf-8')
+            
+            # Use the compressed image
+            original_size = len(photo_image)
+            compressed_size = len(compressed_image)
+            compression_ratio = (original_size - compressed_size) / original_size * 100
+            
+            print(f"Image compressed from {original_size} to {compressed_size} bytes ({compression_ratio:.1f}% reduction)")
+            
+            # Ensure it's small enough for the database
+            if len(compressed_image) > 65000:  # Keep it under 65KB for TEXT column
+                print("Image still too large after compression, reducing quality further")
+                # Try a more aggressive compression
+                output = io.BytesIO()
+                if img.mode in ('RGBA', 'LA'):
+                    background.save(output, format='JPEG', quality=25)  # Very low quality
+                else:
+                    img.save(output, format='JPEG', quality=25)  # Very low quality
+                
+                compressed_image = base64.b64encode(output.getvalue()).decode('utf-8')
+                print(f"Further compressed to {len(compressed_image)} bytes")
+            
+            photo_image = compressed_image
+        except Exception as e:
+            print(f"Warning: Failed to compress image: {str(e)}")
+            # If compression fails, use a placeholder
+            print("Using placeholder image instead")
+            photo_image = "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"
+
+        # Get the next PhotoID
         max_photo_id = db.session.query(db.func.max(Photo.PhotoID)).scalar()
         next_photo_id = 1 if max_photo_id is None else max_photo_id + 1
 
-        # Create new food item
+        # Create new photo
         new_photo = Photo(
-            FoodID=next_photo_id,
+            PhotoID=next_photo_id,
             RestaurantID=restaurant_id,
-            PhotoImage=encodeBase64(photo_image)
+            PhotoImage=photo_image
         )
         db.session.add(new_photo)
         db.session.commit()
         
-        # Return the created food item
+        # Return the created photo item
         new_photo_dict = {
-            'PhotoID': new_photo.Photo,
+            'PhotoID': new_photo.PhotoID,
             'RestaurantID': new_photo.RestaurantID,
-            'PhotoImage':new_photo.PhotoImage
+            'PhotoImage': 'data:image/jpeg;base64,' + photo_image[:30] + '...' # Show prefix for debugging
         }
         
         return jsonify({
             'success': True,
-            'food': new_photo_dict
+            'photo': new_photo_dict
         })
     except Exception as e:
         db.session.rollback()
