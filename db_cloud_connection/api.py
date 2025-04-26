@@ -11,6 +11,9 @@ import pymysql
 import base64
 from functools import wraps
 
+# Import SQLAlchemy engine utilities for dynamic role switching
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 # Load environment variables
 load_dotenv()
@@ -19,15 +22,23 @@ app = Flask(__name__, static_folder='../frontend-react/build', static_url_path='
 CORS(app)  # Enable CORS for all routes
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')  # Add this to your .env file
 
-# Database configuration
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
+# Load primary admin credentials
+DB_ADMIN_USER = os.getenv('DB_USER')
+DB_ADMIN_PASSWORD = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT')
 DB_NAME = os.getenv('DB_NAME')
 
-# Configure SQLAlchemy
-app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+# Load credentials for different database roles
+DB_GUEST_USER = os.getenv('GUEST_USER')
+DB_GUEST_PASSWORD = os.getenv('GUEST_PASSWORD')
+DB_CUSTOMER_USER = os.getenv('CUSTOMER_USER')
+DB_CUSTOMER_PASSWORD = os.getenv('CUSTOMER_PASSWORD')
+DB_RESTAURANT_USER = os.getenv('RESTAURANT_USER')
+DB_RESTAURANT_PASSWORD = os.getenv('RESTAURANT_PASSWORD')
+
+# Configure SQLAlchemy with default guest role
+app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{DB_GUEST_USER}:{DB_GUEST_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_size': 10,
@@ -38,6 +49,49 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
+
+# Create SQLAlchemy engines for each role
+uri_guest = f"mysql+pymysql://{DB_GUEST_USER}:{DB_GUEST_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+uri_customer = f"mysql+pymysql://{DB_CUSTOMER_USER}:{DB_CUSTOMER_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+uri_restaurant = f"mysql+pymysql://{DB_RESTAURANT_USER}:{DB_RESTAURANT_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+uri_admin = f"mysql+pymysql://{DB_ADMIN_USER}:{DB_ADMIN_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# Engine options reused from config
+engine_opts = app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})
+
+# Instantiate engines
+engine_guest = create_engine(uri_guest, **engine_opts)
+engine_customer = create_engine(uri_customer, **engine_opts)
+engine_restaurant = create_engine(uri_restaurant, **engine_opts)
+engine_admin = create_engine(uri_admin, **engine_opts)
+
+# Scoped session bound to guest by default
+SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine_guest))
+# Override Flask-SQLAlchemy session
+db.session = SessionLocal
+
+# Switch database connection per request based on JWT accountType
+@app.before_request
+def _switch_db_connection():
+    # Use admin credentials for signup and login
+    if request.path.startswith('/api/auth/signup') or request.path.startswith('/api/auth/login'):
+        print("[DB SWITCH] Using admin engine for signup/login")
+        SessionLocal.configure(bind=engine_admin)
+        return
+    role = 'guest'
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header.split(' ', 1)[1]
+        payload = verify_token(token)
+        if payload and 'accountType' in payload:
+            role = payload['accountType']
+    # Rebind session to appropriate engine
+    if role == 'customer':
+        SessionLocal.configure(bind=engine_customer)
+    elif role == 'restaurant':
+        SessionLocal.configure(bind=engine_restaurant)
+    else:
+        SessionLocal.configure(bind=engine_guest)
 
 # Define models
 class Customer(db.Model):
@@ -1412,6 +1466,10 @@ def get_restaurants_by_account(): # Removed account_id parameter
     except Exception as e:
         print(f"Error fetching restaurants for account {account_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.teardown_appcontext
+def remove_db_session(exception=None):
+    SessionLocal.remove()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

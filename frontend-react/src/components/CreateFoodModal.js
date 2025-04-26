@@ -23,6 +23,7 @@ function CreateFoodModal({ isOpen, onClose, restaurantId, onFoodCreated, editing
   };
 
   useEffect(() => {
+    // Initialize form data based on whether editing or creating
     if (editingFood) {
       setFormData({
         foodName: editingFood.FoodName,
@@ -34,7 +35,10 @@ function CreateFoodModal({ isOpen, onClose, restaurantId, onFoodCreated, editing
         price: '',
       });
     }
-  }, [editingFood]);
+    // Reset loading and error states when modal opens or editing context changes
+    setLoading(false);
+    setError('');
+  }, [editingFood, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -86,7 +90,8 @@ function CreateFoodModal({ isOpen, onClose, restaurantId, onFoodCreated, editing
     } catch (err) {
       setError(err.message);
     } finally {
-      if (error) setLoading(false);
+      // Always reset loading state after submission attempt
+      setLoading(false);
     }
   };
 
