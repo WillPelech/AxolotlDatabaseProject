@@ -52,6 +52,12 @@ function Navbar() {
             >
               Sign Up
             </Link>
+            <Link
+              to="/messages"
+              className="bg-blue-500 text-white hover:bg-blue-600 px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Messages
+            </Link>
           </div>
         </div>
       </div>
