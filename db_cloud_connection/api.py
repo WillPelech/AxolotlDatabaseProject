@@ -41,6 +41,22 @@ DB_CUSTOMER_PASSWORD = os.getenv('CUSTOMER_PASSWORD')
 DB_RESTAURANT_USER = os.getenv('RESTAURANT_USER')
 DB_RESTAURANT_PASSWORD = os.getenv('RESTAURANT_PASSWORD')
 
+DB_ADMIN_USER='avnadmin'
+DB_ADMIN_PASSWORD='AVNS_fiZMmHRZpGT6wl1WFN5'
+DB_HOST='mysql-3b79a8a7-nyu-47b8.c.aivencloud.com'
+DB_PORT='19374'
+DB_NAME='project'
+
+CUSTOMER_USER='Customer'
+CUSTOMER_PASSWORD='AVNS_ZZWTEucrBXC3kNZBJ2r'
+
+RESTAURANT_USER='Restaurant'
+RESTAURANT_PASSWORD='AVNS_vc1zPgTczAgdAx0dKtC'
+
+GUEST_USER='Guest'
+GUEST_PASSWORD='AVNS_1D9GR82y7hrk9rCt81_'
+
+
 # Configure SQLAlchemy with default guest role
 app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{DB_GUEST_USER}:{DB_GUEST_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -1528,6 +1544,31 @@ def update_restaurant_photos(restaurant_id):
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/restaurants/<int:restaurant_id>/photos/<int:photo_id>', methods=['DELETE'])
+def delete_restaurant_photos(restaurant_id, photo_id):
+    try:
+        target_photo = Photo.query.filter_by(PhotoID=photo_id).first()
+        
+        if not target_photo:
+            return jsonify({
+                'Error':'Image not found'
+            }), 404
+        else:
+            print('deleting photo')
+            db.session.delete(target_photo)
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+            })
+    except Exception as e:
+        print(f"Error deleting photo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 @app.route('/api/restaurants/account', methods=['GET']) # Changed route
 @require_restaurant
