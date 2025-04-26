@@ -18,6 +18,7 @@ import Orders from './pages/Orders';
 import Reviews from './pages/Reviews';
 import MyReviews from './pages/MyReviews';
 import AddressManagement from './pages/AddressManagement';
+import Messages from './components/Messages';
 import './App.css';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
             <Route path="/map" element={<Map />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/messages" element={<Messages />} />
             <Route
               path="/profile"
               element={
