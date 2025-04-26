@@ -13,6 +13,10 @@ function Map() {
   useEffect(() => {
     const fetchReviewedRestaurants = async () => {
       try {
+        if (!user || !user.accountId) {
+          console.log('No user logged in or missing accountId, skipping fetch');
+          return;
+        }
         const data = await restaurantApi.getReviewedRestaurants(user.accountId);
         setReviewRestaurants(data.restaurants);
       } catch (err) {
@@ -20,8 +24,10 @@ function Map() {
       }
     };
 
-    fetchReviewedRestaurants();
-  }, [user.accountId]);
+    if (user && user.accountId) {
+      fetchReviewedRestaurants();
+    }
+  }, [user?.accountId]);
 
   useEffect(() => {
     const initMap = () => {

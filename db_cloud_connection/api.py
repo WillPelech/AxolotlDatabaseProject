@@ -328,7 +328,7 @@ def login():
 
         print(f"Login attempt for username/email: {username_or_email}")
         
-        user = None
+        user = {'type': 'guest', 'accountId': None, 'isRestaurant': False} 
         account_type = None
         account_id = None
         
