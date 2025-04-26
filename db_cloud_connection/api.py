@@ -1591,6 +1591,40 @@ def get_restaurants_by_account(): # Removed account_id parameter
         print(f"Error fetching restaurants for account {account_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+#gets the message info for each customer
+@app.route('/api/customers/messages', methods=['GET'])
+@require_customer
+def get_customer_messages():
+   try:
+   
+       customer_id = g.current_user['id']
+
+
+       messages = Messages.query.filter(
+           (Messages.SenderID == customer_id) | (Messages.RecipientID == customer_id)
+       ).order_by(Messages.Timestamp.desc()).all()
+
+
+       message_list = [{
+           'MessageID': m.MessageID,
+           'SenderID': m.SenderID,
+           'RecipientID': m.RecipientID,
+           'Timestamp': m.Timestamp.isoformat(),
+           'Contents': m.Contents
+       } for m in messages]
+
+
+       return jsonify({
+           'success': True,
+           'messages': message_list
+       }), 200
+   except Exception as e:
+       print(f"Error fetching messages for customer {customer_id}: {str(e)}")
+       return jsonify({
+           'success': False,
+           'error': 'Failed to retrieve messages'
+       }), 500
+
 @app.teardown_appcontext
 def remove_db_session(exception=None):
     SessionLocal.remove()
