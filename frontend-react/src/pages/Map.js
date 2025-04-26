@@ -8,7 +8,18 @@ function Map() {
   const [markers, setMarkers] = useState([]);
   const [error, setError] = useState(null);
   const [reviewRestaurants, setReviewRestaurants] = useState([]);
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
+  const getAuthHeaders = (includeContentType = true) => {
+    const token = getAuthToken();
+    let headers = {};
+    if (includeContentType) {
+        headers['Content-Type'] = 'application/json';
+    }
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
 
   useEffect(() => {
     const fetchReviewedRestaurants = async () => {
@@ -17,8 +28,16 @@ function Map() {
           console.log('No user logged in or missing accountId, skipping fetch');
           return;
         }
-        const data = await restaurantApi.getReviewedRestaurants(user.accountId);
-        setReviewRestaurants(data.restaurants);
+        if(user.accountType === 'customer'){
+          const data = await restaurantApi.getReviewedRestaurants(user.accountId);
+          setReviewRestaurants(data.restaurants);
+        }else if(user.accountType === 'restaurant'){
+          const response = await fetch(`http://localhost:5000/api/restaurants/account`, { 
+            headers: getAuthHeaders(false)
+        });
+        const data = await response.json();
+        setReviewRestaurants(data.restaurants) 
+        }
       } catch (err) {
         setError(err.message);
       }
@@ -27,7 +46,7 @@ function Map() {
     if (user && user.accountId) {
       fetchReviewedRestaurants();
     }
-  }, [user?.accountId]);
+  }, [user?.accountId, getAuthToken]);
 
   useEffect(() => {
     const initMap = () => {

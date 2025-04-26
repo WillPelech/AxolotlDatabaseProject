@@ -96,6 +96,11 @@ export const restaurantApi = {
         });
         if(!response.ok) throw new Error('Failed to get reviewed restaurants');
         return response.json();
+    },
+
+    // get owned restaurants
+    getOwnedRestaurants: async (id) => {
+        const response = await fetch(``)
     }
 
 }; 
