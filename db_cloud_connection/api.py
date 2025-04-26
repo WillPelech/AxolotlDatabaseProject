@@ -70,28 +70,46 @@ SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bi
 # Override Flask-SQLAlchemy session
 db.session = SessionLocal
 
-# Switch database connection per request based on JWT accountType
+# DATABASE ROLE BINDING - This happens on EVERY request
 @app.before_request
-def _switch_db_connection():
-    # Use admin credentials for signup and login
-    if request.path.startswith('/api/auth/signup') or request.path.startswith('/api/auth/login'):
-        print("[DB SWITCH] Using admin engine for signup/login")
-        SessionLocal.configure(bind=engine_admin)
-        return
-    role = 'guest'
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header.startswith('Bearer '):
-        token = auth_header.split(' ', 1)[1]
-        payload = verify_token(token)
-        if payload and 'accountType' in payload:
-            role = payload['accountType']
-    # Rebind session to appropriate engine
-    if role == 'customer':
-        SessionLocal.configure(bind=engine_customer)
-    elif role == 'restaurant':
-        SessionLocal.configure(bind=engine_restaurant)
+def bind_database_role():
+    """
+    Bind database session to the correct user role for each request.
+    Sets role based on path or JWT content.
+    """
+    path = request.path
+    
+    # CASE 1: Auth endpoints - Need admin role to create accounts
+    if path.startswith('/api/auth/signup') or path.startswith('/api/auth/login'):
+        # Admin role for auth operations
+        role = "admin"
+        engine = engine_admin
+        
+    # CASE 2: Token endpoints - Customer or Restaurant based on JWT token
     else:
-        SessionLocal.configure(bind=engine_guest)
+        # Default to guest
+        role = "guest"
+        engine = engine_guest
+        
+        # Check for JWT token
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ', 1)[1]
+            payload = verify_token(token)
+            
+            # If valid token, use its account type
+            if payload and 'accountType' in payload:
+                account_type = payload['accountType']
+                if account_type == 'customer':
+                    role = "customer"
+                    engine = engine_customer
+                elif account_type == 'restaurant':
+                    role = "restaurant"
+                    engine = engine_restaurant
+    
+    # Apply the binding - This gets invoked on every request
+    SessionLocal.configure(bind=engine)
+    print(f"[DB ROLE] {role.upper()} role applied for {request.method} {path}")
 
 # Define models
 class Customer(db.Model):
@@ -424,18 +442,19 @@ def token_required(f):
             g.current_user = {
                 'id': user_id,
                 'type': account_type,
-                'username': current_user_obj.Username, 
-                'object': current_user_obj 
+                'username': current_user_obj.Username,
+                'object': current_user_obj
             }
             print(f"[Auth Debug] Set g.current_user: {g.current_user}") # Log context
-            
+            # Database binding is handled in before_request; not binding here
+            print(f"[Auth Debug] Returning to view function: {f.__name__}")
+            return f(*args, **kwargs)
         except Exception as e:
              print(f"[Auth Debug] Error loading user from token: {e}")
              import traceback
              traceback.print_exc()
              return jsonify({'message': 'Error processing token user data!'}), 500
 
-        return f(*args, **kwargs)
     return decorated
 
 # Decorator for requiring customer role
@@ -501,6 +520,7 @@ def get_restaurant_foods(restaurant_id):
         }), 500
 
 @app.route('/api/restaurants/<int:restaurant_id>/foods', methods=['POST'])
+@require_restaurant
 def create_food(restaurant_id):
     try:
         data = request.get_json()
@@ -548,6 +568,7 @@ def create_food(restaurant_id):
         }), 500
 
 @app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['PUT'])
+@require_restaurant
 def update_food(restaurant_id, food_id):
     """Updates a specific food item for a given restaurant."""
     try:
@@ -591,6 +612,7 @@ def update_food(restaurant_id, food_id):
         }), 500
 
 @app.route('/api/restaurants/<int:restaurant_id>/foods/<int:food_id>', methods=['DELETE'])
+@require_restaurant
 def delete_food(restaurant_id, food_id):
     """Deletes a specific food item for a given restaurant."""
     try:
@@ -750,6 +772,7 @@ def update_restaurant(id):
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/restaurants/<int:id>', methods = ['DELETE'])
+@require_restaurant
 def delete_restaurant(id):
     try:
         # First check if restaurant exists
@@ -937,6 +960,7 @@ def update_customer_address():
         return jsonify({"error": "Failed to update address"}), 500
 
 @app.route('/api/messages', methods = ['GET'])
+@require_customer
 def get_messages():
     try:
         messages = Messages.query.all()
@@ -953,6 +977,7 @@ def get_messages():
         return jsonify({"error": str(e)}), 500
     
 @app.route('/api/messages', methods=['POST'])
+@require_customer
 def create_message():
     try:
         data = request.json["messageData"]
@@ -978,6 +1003,7 @@ def create_message():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/messages/<int:id>', methods = ['GET'])
+@require_customer
 def get_messages_by_id():
     try:
         id = request.json["id"]
@@ -999,6 +1025,7 @@ def get_messages_by_id():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/messages/user_messages/<int:userid>', methods = ['GET'])
+@require_customer
 def get_messages_by_userid():
     try:
         userid = request.json["userid"]
@@ -1409,6 +1436,7 @@ def get_restaurant_photos(restaurant_id):
         }), 500
 
 @app.route('/api/restaurants/<int:restaurant_id>/photos', methods=['POST'])
+@require_restaurant
 def update_restaurant_photos(restaurant_id):
     try:
         data = request.get_json()
