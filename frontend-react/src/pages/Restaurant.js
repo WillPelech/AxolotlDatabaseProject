@@ -8,6 +8,7 @@ const Restaurant = () => {
   const { user, getAuthToken } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
   const [foods, setFoods] = useState([]);
+  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -64,6 +65,20 @@ const Restaurant = () => {
         if (!foodsResponse.ok) {
           throw new Error(`Foods fetch failed: ${foodsData.error || foodsResponse.statusText}`);
         }
+        
+        // Fetch restaurant photos
+        try {
+          const photosResponse = await fetch(`http://localhost:5000/api/restaurants/${id}/photos`);
+          const photosData = await photosResponse.json();
+          console.log('Photos data:', photosData);
+          
+          if (photosResponse.ok && photosData.success) {
+            setPhotos(photosData.photolist || []);
+          }
+        } catch (photoErr) {
+          console.error('Error fetching photos:', photoErr);
+          // Don't throw here, just log error and continue with empty photos array
+        }
 
         setRestaurant(restaurantData.restaurant);
         setFoods(Array.isArray(foodsData.foodlist) ? foodsData.foodlist : []);
@@ -71,6 +86,7 @@ const Restaurant = () => {
         console.error('Detailed error:', err);
         setError(err.message || 'Failed to load restaurant data');
         setFoods([]);
+        setPhotos([]);
       } finally {
         setLoading(false);
       }
@@ -224,6 +240,28 @@ const Restaurant = () => {
               Place Order
             </button>
           </div>
+        </div>
+
+        {/* Photo Gallery Section */}
+        <div className="mt-8 bg-white shadow rounded-lg p-6">
+          <h2 className="text-2xl font-bold text-neutral-900 mb-6">Photo Gallery</h2>
+          {photos.length === 0 ? (
+            <div className="text-center text-neutral-500 py-8">
+              No photos available for this restaurant.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {photos.map((photo) => (
+                <div key={photo.PhotoID} className="overflow-hidden rounded-lg shadow-md h-48">
+                  <img 
+                    src={`data:image/jpeg;base64,${photo.PhotoImage}`} 
+                    alt={`Restaurant food ${photo.PhotoID}`}
+                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Menu Section */}

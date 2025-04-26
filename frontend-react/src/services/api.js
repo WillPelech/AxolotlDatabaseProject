@@ -14,6 +14,39 @@ export const restaurantApi = {
         return response.json();
     },
 
+    // Get restaurant photos
+    getPhotos: async (id) => {
+        const response = await fetch(`${API_BASE_URL}/restaurants/${id}/photos`);
+        if (!response.ok) throw new Error('Failed to fetch restaurant photos');
+        return response.json();
+    },
+
+    // Upload a restaurant photo
+    uploadPhoto: async (id, photoData, authToken) => {
+        const response = await fetch(`${API_BASE_URL}/restaurants/${id}/photos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(photoData),
+        });
+        if (!response.ok) throw new Error('Failed to upload photo');
+        return response.json();
+    },
+
+    // Delete a restaurant photo
+    deletePhoto: async (restaurantId, photoId, authToken) => {
+        const response = await fetch(`${API_BASE_URL}/restaurants/${restaurantId}/photos/${photoId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to delete photo');
+        return response.json();
+    },
+
     // Get single restaurant
     getOne: async (id) => {
         const response = await fetch(`${API_BASE_URL}/restaurants/${id}`);

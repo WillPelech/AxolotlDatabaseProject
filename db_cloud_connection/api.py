@@ -328,7 +328,8 @@ def login():
 
         print(f"Login attempt for username/email: {username_or_email}")
         
-        user = {'type': 'guest', 'accountId': None, 'isRestaurant': False} 
+        # Initialize user data
+        user_obj = None
         account_type = None
         account_id = None
         
@@ -337,24 +338,25 @@ def login():
             (Customer.Username == username_or_email) | (Customer.Email == username_or_email)
         ).first()
         if customer and check_password(password, customer.Password):
-            user = customer
+            user_obj = customer
             account_type = 'customer'
             account_id = customer.CustomerID
             
-        # If not customer, try Restaurant_Account table
-        if not user:
+        # If not a customer match, try Restaurant_Account table
+        if not user_obj:
              restaurant_acc = RestaurantAccount.query.filter(
                  (RestaurantAccount.Username == username_or_email) | (RestaurantAccount.Email == username_or_email)
              ).first()
              if restaurant_acc and check_password(password, restaurant_acc.Password):
-                 user = restaurant_acc
+                 user_obj = restaurant_acc
                  account_type = 'restaurant'
                  account_id = restaurant_acc.AccountID
 
-        print(f"Database query result: {user}")
+        print(f"Database query result: {user_obj}")
         print(f"Account type found: {account_type}")
 
-        if user and account_id is not None:
+        # Handle successful authentication
+        if user_obj and account_type and account_id is not None:
             token = generate_token(user_id=account_id, account_type=account_type)
             if not token:
                  # Handle error if token generation fails
@@ -364,8 +366,8 @@ def login():
                 'message': f'Login successful - You are logged in as a {account_type} account',
                 'token': token, # Include the token in the response
                 'user': {
-                    'username': user.Username,
-                    'email': user.Email,
+                    'username': user_obj.Username,
+                    'email': user_obj.Email,
                     'accountType': account_type,
                     # Use the consistent account_id determined above
                     'accountId': account_id, 
@@ -373,6 +375,7 @@ def login():
                 }
             }
             return jsonify(response_data), 200
+        # Handle validation failures
         elif customer and not check_password(password, customer.Password):
              return jsonify({'error': 'Invalid password for customer'}), 401
         elif not customer:
@@ -384,10 +387,9 @@ def login():
              elif not restaurant_acc:
                   print("User not found in either table")
                   return jsonify({'error': 'User not found'}), 401
-        else: # Catch any other login failure cases
-             print("Login failed for unknown reason")
-             return jsonify({'error': 'Login failed'}), 401
-
+        else:
+            print("Login failed for unknown reason")
+            return jsonify({'error': 'Login failed - invalid credentials'}), 401
 
     except Exception as e:
         print(f"Login error: {str(e)}")

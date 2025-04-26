@@ -19,10 +19,15 @@ function EditRestaurant() {
   const [foods, setFoods] = useState([]);
   const [editingFood, setEditingFood] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   useEffect(() => {
     fetchRestaurantDetails();
     fetchFoods();
+    fetchPhotos();
   }, [id]);
 
   // Auto-hide success message after 3 seconds
@@ -91,6 +96,25 @@ function EditRestaurant() {
       }
     } catch (err) {
       console.error('Error fetching foods:', err);
+    }
+  };
+
+  const fetchPhotos = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/restaurants/${id}/photos`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setPhotos(data.photolist || []);
+      }
+    } catch (err) {
+      console.error('Error fetching photos:', err);
     }
   };
 
@@ -205,6 +229,97 @@ function EditRestaurant() {
       setEditingFood(null);
     } catch (err) {
       setError(err.message || 'Error connecting to the server');
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setPhotoFile(selectedFile);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(selectedFile);
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    e.preventDefault();
+    if (!photoFile) {
+      setError('Please select an image to upload');
+      return;
+    }
+    
+    setIsUploading(true);
+    setError('');
+    
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(photoFile);
+      
+      reader.onload = async () => {
+        // Extract base64 content (remove data:image/jpeg;base64, prefix)
+        const base64Image = reader.result.split(',')[1];
+        
+        const response = await fetch(`http://localhost:5000/api/restaurants/${id}/photos`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            PhotoImage: base64Image
+          }),
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            throw new Error("Authentication failed or permission denied.");
+          } else {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to upload photo');
+          }
+        }
+        
+        // Refresh photos list
+        fetchPhotos();
+        setSuccessMessage('Photo uploaded successfully!');
+        setPhotoFile(null);
+        setPhotoPreview(null);
+      };
+    } catch (err) {
+      setError(err.message || 'Error uploading photo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId) => {
+    if (!window.confirm('Are you sure you want to delete this photo?')) {
+      return;
+    }
+    
+    setError('');
+    try {
+      const response = await fetch(`http://localhost:5000/api/restaurants/${id}/photos/${photoId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(false)
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("Authentication failed or permission denied.");
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to delete photo');
+        }
+      }
+      
+      setPhotos(photos.filter(photo => photo.PhotoID !== photoId));
+      setSuccessMessage('Photo deleted successfully!');
+    } catch (err) {
+      setError(err.message || 'Error deleting photo');
     }
   };
 
@@ -374,6 +489,86 @@ function EditRestaurant() {
             ))}
             {foods.length === 0 && (
               <p className="text-gray-500 text-center">No menu items yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Photo Management Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-gray-900">Restaurant Photos</h3>
+          </div>
+          
+          {/* Photo upload form */}
+          <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-800 mb-4">Upload New Photo</h4>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-grow">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="w-full border border-gray-300 rounded p-2"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Accepted formats: JPG, PNG, GIF. Max size: 5MB
+                </p>
+              </div>
+              <button
+                onClick={handlePhotoUpload}
+                disabled={!photoFile || isUploading}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
+                  !photoFile || isUploading
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-orange-600 hover:bg-orange-700 transition-colors'
+                }`}
+              >
+                {isUploading ? 'Uploading...' : 'Upload Photo'}
+              </button>
+            </div>
+            
+            {photoPreview && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-700 mb-2">Preview:</p>
+                <div className="w-48 h-48 overflow-hidden rounded-lg shadow-sm border border-gray-200">
+                  <img 
+                    src={photoPreview} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Photo gallery */}
+          <div>
+            <h4 className="font-medium text-gray-800 mb-4">Current Photos</h4>
+            {photos.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No photos uploaded yet</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {photos.map((photo) => (
+                  <div key={photo.PhotoID} className="relative group">
+                    <div className="overflow-hidden rounded-lg shadow-md h-48">
+                      <img 
+                        src={`data:image/jpeg;base64,${photo.PhotoImage}`} 
+                        alt={`Restaurant photo ${photo.PhotoID}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleDeletePhoto(photo.PhotoID)}
+                      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete photo"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
