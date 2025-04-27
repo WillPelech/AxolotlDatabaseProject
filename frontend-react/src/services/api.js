@@ -99,8 +99,5 @@ export const restaurantApi = {
     },
 
     // get owned restaurants
-    getOwnedRestaurants: async (id) => {
-        const response = await fetch(``)
-    }
 
 }; 
