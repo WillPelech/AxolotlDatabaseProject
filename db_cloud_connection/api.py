@@ -811,19 +811,11 @@ def delete_restaurant(id):
         if food_ids:
             FoodOrders.query.filter(FoodOrders.FoodID.in_(food_ids)).delete(synchronize_session=False)
 
-        # 2. Delete associated Orders (depends on Restaurant)
-        Orders.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
-            
-        # 3. Delete associated Reviews (depends on Restaurant)
-        Review.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
-        
+        # 2. Delete associated Reviews handled by DB trigger, no manual deletion needed
+
         # 4. Delete associated FrontPage entries (depends on Restaurant)
         FrontPage.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
 
-        # 5. Delete associated Food items (depends on Restaurant)
-        if food_ids:
-             Food.query.filter_by(RestaurantID=id).delete(synchronize_session=False)
-        
         # 6. Finally, delete the restaurant itself
         db.session.delete(restaurant)
         
