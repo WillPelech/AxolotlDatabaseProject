@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import hashlib
 import jwt
 from datetime import datetime, timezone, timedelta
@@ -20,16 +20,16 @@ from sqlalchemy import text
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.orm import aliased  # Add aliasing for message joins
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project root .env file
+load_dotenv(find_dotenv())
 
 app = Flask(__name__, static_folder='../frontend-react/build', static_url_path='')
 CORS(app)  # Enable CORS for all routes
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')  # Add this to your .env file
 
 # Load primary admin credentials
-DB_ADMIN_USER = os.getenv('DB_USER')
-DB_ADMIN_PASSWORD = os.getenv('DB_PASSWORD')
+DB_ADMIN_USER = os.getenv('DB_ADMIN_USER')
+DB_ADMIN_PASSWORD = os.getenv('DB_ADMIN_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT')
 DB_NAME = os.getenv('DB_NAME')
