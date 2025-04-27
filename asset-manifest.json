@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/AxolotlDatabaseProject/static/css/main.1250c9a8.css",
+    "main.js": "/AxolotlDatabaseProject/static/js/main.c532739e.js",
+    "static/js/453.f6713f7b.chunk.js": "/AxolotlDatabaseProject/static/js/453.f6713f7b.chunk.js",
+    "index.html": "/AxolotlDatabaseProject/index.html",
+    "main.1250c9a8.css.map": "/AxolotlDatabaseProject/static/css/main.1250c9a8.css.map",
+    "main.c532739e.js.map": "/AxolotlDatabaseProject/static/js/main.c532739e.js.map",
+    "453.f6713f7b.chunk.js.map": "/AxolotlDatabaseProject/static/js/453.f6713f7b.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1250c9a8.css",
+    "static/js/main.c532739e.js"
+  ]
+}
