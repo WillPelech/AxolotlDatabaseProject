@@ -18,7 +18,9 @@ import Orders from './pages/Orders';
 import Reviews from './pages/Reviews';
 import MyReviews from './pages/MyReviews';
 import AddressManagement from './pages/AddressManagement';
-import Messages from './components/Messages';
+import MessagesList from './pages/MessagesList';
+import NewChat from './pages/NewChat';
+import ChatPage from './pages/ChatPage';
 import './App.css';
 
 function App() {
@@ -40,7 +42,9 @@ function App() {
             <Route path="/map" element={<Map />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/messages" element={<Messages />} />
+            <Route path="/messages" element={<MessagesList />} />
+            <Route path="/messages/new" element={<NewChat />} />
+            <Route path="/messages/:partnerId" element={<ChatPage />} />
             <Route
               path="/profile"
               element={

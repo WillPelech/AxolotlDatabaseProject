@@ -18,6 +18,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy import text
 from sqlalchemy import delete as sa_delete
+from sqlalchemy.orm import aliased  # Add aliasing for message joins
 
 # Load environment variables
 load_dotenv()
@@ -1595,39 +1596,66 @@ def get_restaurants_by_account(): # Removed account_id parameter
         print(f"Error fetching restaurants for account {account_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# Lookup a customer by username for starting new chats
+@app.route('/api/customers/lookup/<string:username>', methods=['GET'])
+@require_customer
+def lookup_customer(username):
+    try:
+        cust = Customer.query.filter_by(Username=username).first()
+        if not cust:
+            return jsonify({'error': 'User not found'}), 404
+        return jsonify({'customerID': cust.CustomerID, 'username': cust.Username}), 200
+    except Exception as e:
+        print(f"Error looking up customer '{username}': {str(e)}")
+        return jsonify({'error': 'Failed to lookup user'}), 500
+
 #gets the message info for each customer
 @app.route('/api/customers/messages', methods=['GET'])
 @require_customer
 def get_customer_messages():
-   try:
-   
-       customer_id = g.current_user['id']
+    try:
+        customer_id = g.current_user['id']
 
+        # Alias Customer table for sender and recipient
+        Sender = aliased(Customer)
+        Recipient = aliased(Customer)
 
-       messages = Messages.query.filter(
-           (Messages.SenderID == customer_id) | (Messages.RecipientID == customer_id)
-       ).order_by(Messages.Timestamp.desc()).all()
+        # Join to get usernames for both parties
+        query = (
+            db.session.query(
+                Messages,
+                Sender.Username.label('senderUsername'),
+                Recipient.Username.label('recipientUsername')
+            )
+            .join(Sender, Messages.SenderID == Sender.CustomerID)
+            .join(Recipient, Messages.RecipientID == Recipient.CustomerID)
+            .filter(
+                (Messages.SenderID == customer_id) | (Messages.RecipientID == customer_id)
+            )
+            .order_by(Messages.Timestamp.desc())
+        )
 
+        results = query.all()
+        message_list = [{
+            'MessageID': m.MessageID,
+            'SenderID': m.SenderID,
+            'SenderUsername': senderUsername,
+            'RecipientID': m.RecipientID,
+            'RecipientUsername': recipientUsername,
+            'Timestamp': m.Timestamp.isoformat(),
+            'Contents': m.Contents
+        } for m, senderUsername, recipientUsername in results]
 
-       message_list = [{
-           'MessageID': m.MessageID,
-           'SenderID': m.SenderID,
-           'RecipientID': m.RecipientID,
-           'Timestamp': m.Timestamp.isoformat(),
-           'Contents': m.Contents
-       } for m in messages]
-
-
-       return jsonify({
-           'success': True,
-           'messages': message_list
-       }), 200
-   except Exception as e:
-       print(f"Error fetching messages for customer {customer_id}: {str(e)}")
-       return jsonify({
-           'success': False,
-           'error': 'Failed to retrieve messages'
-       }), 500
+        return jsonify({
+            'success': True,
+            'messages': message_list
+        }), 200
+    except Exception as e:
+        print(f"Error fetching messages for customer {customer_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to retrieve messages'
+        }), 500
 
 @app.teardown_appcontext
 def remove_db_session(exception=None):
