@@ -188,8 +188,8 @@ class Messages(db.Model):
     MessageID = db.Column(db.Integer, primary_key=True)
     SenderID = db.Column(db.Integer, nullable=False)
     RecipientID = db.Column(db.Integer, nullable=False)
-    Timestamp = db.Column(db.DateTime, nullable=False)
-    Contents = db.Column(db.Text, nullable=False)
+    Timestamp = db.Column('Datetime', db.DateTime, nullable=False)
+    Contents = db.Column('Content', db.Text, nullable=False)
 
 class Review(db.Model):
     __tablename__ = 'Review'
@@ -1001,33 +1001,40 @@ def get_messages():
 @require_customer
 def create_message():
     try:
-        data = request.json["messageData"]
-        
+        data = request.get_json()
+        recipient_id = data.get('recipientID')
+        contents = data.get('contents')
+        if not recipient_id or not contents:
+            return jsonify({'error': 'recipientID and contents are required'}), 400
+        sender_id = g.current_user['id']
+        timestamp = datetime.now(timezone.utc)
         # Get the next MessageID
         max_id = db.session.query(db.func.max(Messages.MessageID)).scalar()
         next_id = 1 if max_id is None else max_id + 1
 
-        # Create new message
+        # Create new message with server-side sender and timestamp
         new_message = Messages(
             MessageID=next_id,
-            SenderID=data['senderID'],
-            RecipientID=data['recipientID'],
-            Timestamp=data['timestamp'],
-            Contents=data['contents']
+            SenderID=sender_id,
+            RecipientID=recipient_id,
+            Timestamp=timestamp,
+            Contents=contents
         )
         db.session.add(new_message)
         db.session.commit()
-        
-        return jsonify({'message': 'Message created successfully'}), 201
+        return jsonify({
+            'success': True,
+            'message': 'Message created successfully',
+            'messageID': new_message.MessageID
+        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/messages/<int:id>', methods = ['GET'])
 @require_customer
-def get_messages_by_id():
+def get_messages_by_id(id):
     try:
-        id = request.json["id"]
         message = Messages.query.filter_by(MessageID=id).first()
         
         if message:
@@ -1047,23 +1054,20 @@ def get_messages_by_id():
 
 @app.route('/api/messages/user_messages/<int:userid>', methods = ['GET'])
 @require_customer
-def get_messages_by_userid():
+def get_messages_by_userid(userid):
     try:
-        userid = request.json["userid"]
-        message = Messages.query.filter_by(SenderID=userid).union(Messages.query.filter_by(RecipientID=userid))
-        
-        if message:
-            return jsonify({
-                "message": {
-                    'MessageID': message.MessageID,
-                    'SenderID': message.SenderID,
-                    'RecipientID': message.RecipientID,
-                    'Timestamp': message.Timestamp,
-                    'Contents': message.Contents
-                }
-            })
-        else:
-            return jsonify({"error": "Message not found"}), 404
+        # Return all messages where user is sender or recipient
+        messages = Messages.query.filter(
+            (Messages.SenderID == userid) | (Messages.RecipientID == userid)
+        ).order_by(Messages.Timestamp.desc()).all()
+        message_list = [{
+            'MessageID': m.MessageID,
+            'SenderID': m.SenderID,
+            'RecipientID': m.RecipientID,
+            'Timestamp': m.Timestamp.isoformat(),
+            'Contents': m.Contents
+        } for m in messages]
+        return jsonify({ 'messages': message_list }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

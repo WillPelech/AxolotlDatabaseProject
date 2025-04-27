@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 
 const Messages = () => {
-   const [messages, setMessages] = useState([
-       { id: 1, text: 'This is a default message to show how messages will look.' },
-   ]);
+   const { token } = useAuth();
+   const [messages, setMessages] = useState([]);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState(null);
 
@@ -12,12 +12,17 @@ const Messages = () => {
    useEffect(() => {
        const fetchMessages = async () => {
            try {
-               const response = await fetch('http://localhost:5000/api/messages'); // Adjust the URL as needed
-               if (!response.ok) {
-                   throw new Error('Failed to fetch messages');
-               }
+               const response = await fetch('http://localhost:5000/api/customers/messages', {
+                   headers: {
+                       'Content-Type': 'application/json',
+                       'Authorization': `Bearer ${token}`,
+                   },
+               });
                const data = await response.json();
-               setMessages(data);
+               if (!response.ok) {
+                   throw new Error(data.error || data.message || 'Failed to fetch messages');
+               }
+               setMessages(data.messages);
            } catch (err) {
                setError(err.message);
            } finally {
@@ -27,7 +32,7 @@ const Messages = () => {
 
 
        fetchMessages();
-   }, []);
+   }, [token]);
 
 
    if (loading) return <div>Loading messages...</div>;
@@ -39,7 +44,7 @@ const Messages = () => {
            <h1>Messages</h1>
            <ul>
                {messages.map(message => (
-                   <li key={message.id}>{message.text}</li>
+                   <li key={message.MessageID}>{message.Contents}</li>
                ))}
            </ul>
        </div>
